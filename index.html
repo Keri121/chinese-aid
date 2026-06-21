@@ -3448,24 +3448,29 @@ function speakText(text, lang) {
     lang = lang || 'zh-CN';
     const shortText = text.substring(0, 200);
 
-    // 方案1：Web Speech API（苹果/电脑浏览器支持）
-    if (canUseSpeechSynth()) {
-        try {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(shortText);
-            utterance.lang = lang;
-            utterance.rate = 0.75;
-            utterance.pitch = 1;
-            utterance.volume = 1.0;
-            if (lang === 'en-US') utterance.rate = 0.65;
-            utterance.onerror = function() { speakByAudio(shortText, lang); };
-            window.speechSynthesis.speak(utterance);
-            return;
-        } catch(e) {}
-    }
+    // 同时尝试两种方案，哪个先成功用哪个
+    let played = false;
 
-    // 方案2：用Audio播放有道TTS（国内直接可用，不需要API key）
-    speakByAudio(shortText, lang);
+    // 方案1：Web Speech API
+    try {
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(shortText);
+            u.lang = lang;
+            u.rate = 0.8;
+            u.pitch = 1;
+            u.volume = 1.0;
+            if (lang === 'en-US') u.rate = 0.7;
+            u.onstart = function() { played = true; };
+            u.onerror = function() { if (!played) speakByAudio(shortText, lang); };
+            window.speechSynthesis.speak(u);
+        }
+    } catch(e) {}
+
+    // 方案2：Audio播放（同时尝试，不等方案1的结果）
+    setTimeout(function() {
+        if (!played) speakByAudio(shortText, lang);
+    }, 200);
 }
 
 // 检测Web Speech API是否可用
@@ -4579,20 +4584,21 @@ function makeConfusableSentence(correct, wrong, explain) {
         return { question: '填空：' + s.sentence.replace('__', '（  ）') };
     }
 
-    // 没有现成句子，从explain中提取例词生成填空题
-    // explain格式如："'已经'用'已'，'以前'用'以'"
+    // 没有现成句子，从explain中提取例词做填空
     const matches = explain.match(/'([^']+)'/g);
-    if (matches && matches.length >= 2) {
-        const word1 = matches[0].replace(/'/g, '');
-        const word2 = matches[1].replace(/'/g, '');
-        // 用例词造一个填空题
-        return { question: '填空：' + word1.charAt(0) + '（  ）' + (word1.length > 1 ? word1.substring(1) : '') + ' 和 ' + word2.charAt(0) + '（  ）' + (word2.length > 1 ? word2.substring(1) : '') + '，哪个用 "' + correct + '"？' };
+    if (matches) {
+        // 找一个多字词（至少2个字）来做填空
+        for (const m of matches) {
+            const word = m.replace(/'/g, '');
+            if (word.length >= 2 && word.includes(correct)) {
+                const blank = word.replace(correct, '___');
+                return { question: '填空：' + blank };
+            }
+        }
     }
 
-    // 最终回退：用拼音提示
-    const info = PINYIN_DICT[correct];
-    const py = info ? info.py : '';
-    return { question: '下面哪个字读 "' + py + '"？' };
+    // 没有多字例词，直接用explain做说明题
+    return { question: explain.replace(/'/g, '"') + ' → 哪个对？' };
 }
 
 function generateQuestions(level) {
