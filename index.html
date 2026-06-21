@@ -613,10 +613,11 @@
     ⚠️ 当前没有网络，语音和手写识别暂时不可用，其他功能正常
 </div>
 
-<!-- 浏览器提示（安卓微信/QQ里显示） -->
-<div id="browserHint" style="display:none; background:#FFF3E0; color:#E65100; padding:12px 16px; font-size:15px; line-height:1.6; text-align:center; border-bottom:1px solid #FFE0B2;">
-    📱 语音和朗读功能需要 <strong>Chrome浏览器</strong> 才能正常使用<br>
-    <a href="https://www.google.cn/chrome/" style="color:#1565C0; font-weight:600;">👉 点击下载Chrome（免费）</a>
+<!-- 浏览器提示（微信/QQ里显示） -->
+<div id="browserHint" style="display:none; background:#E8F5F4; color:#00695C; padding:12px 16px; font-size:16px; line-height:1.8; text-align:center; border-bottom:1px solid #B2DFDB;">
+    📱 <strong>语音和朗读功能</strong>在微信里不可用<br>
+    👉 请点击右上角 <strong>⋯</strong> → 选择 <strong>"在浏览器中打开"</strong><br>
+    <span style="font-size:14px; color:#666;">用手机自带浏览器打开，所有功能都能用</span>
 </div>
 
 <!-- ===== 主内容区 ===== -->
@@ -638,6 +639,7 @@
                 🎤
             </button>
             <div class="voice-hint" id="voiceHint">点一下开始说话</div>
+            <div style="font-size:14px; color:var(--text-light); text-align:center; margin-top:8px;">如果语音不能用，请点上面的 <strong>"写字"</strong> 标签，用手写键盘输入</div>
             <div id="voiceResult" style="margin-top:16px; display:none;">
                 <div class="result-text" id="voiceResultText"></div>
                 <div style="margin-top:12px; display:flex; gap:10px;">
@@ -3344,7 +3346,13 @@ function switchPage(page) {
 function initSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        console.log('浏览器不支持语音识别');
+        // 检测是否在微信里
+        const ua = navigator.userAgent || '';
+        if (/MicroMessenger|QQ\//i.test(ua)) {
+            showToast('⚠️ 微信里不能用语音，请点右上角⋯→在浏览器中打开');
+        } else {
+            showToast('⚠️ 当前浏览器不支持语音，请用手机自带浏览器打开');
+        }
         return null;
     }
     const rec = new SpeechRecognition();
@@ -3364,7 +3372,7 @@ function startVoice() {
         state.recognition = initSpeechRecognition();
     }
     if (!state.recognition) {
-        showToast('⚠️ 你的浏览器不支持语音，请用Chrome浏览器');
+        // 已经在 initSpeechRecognition 里提示过了
         return;
     }
 
@@ -3440,62 +3448,79 @@ function speakText(text, lang) {
     lang = lang || 'zh-CN';
     const shortText = text.substring(0, 200);
 
-    // 方案1：Web Speech API（iOS Safari、桌面Chrome等支持）
-    try {
-        if ('speechSynthesis' in window) {
+    // 方案1：Web Speech API（苹果/电脑浏览器支持）
+    if (canUseSpeechSynth()) {
+        try {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(shortText);
             utterance.lang = lang;
             utterance.rate = 0.75;
             utterance.pitch = 1;
-            utterance.volume = 1.0; // 安卓需要音量=1
+            utterance.volume = 1.0;
             if (lang === 'en-US') utterance.rate = 0.65;
-
-            let spoke = false;
-            utterance.onstart = function() { spoke = true; };
-
+            utterance.onerror = function() { speakByAudio(shortText, lang); };
             window.speechSynthesis.speak(utterance);
-
-            // 如果500ms内没开始播放，用备用方案
-            setTimeout(function() {
-                if (!spoke) speakBaiduTTS(shortText, lang);
-            }, 500);
             return;
-        }
-    } catch(e) {}
+        } catch(e) {}
+    }
 
-    // 方案2：百度TTS（国内可用，免费）
-    speakBaiduTTS(shortText, lang);
+    // 方案2：用Audio播放有道TTS（国内直接可用，不需要API key）
+    speakByAudio(shortText, lang);
 }
 
-// 备用朗读：百度在线TTS（公开接口，国内可用）
-function speakBaiduTTS(text, lang) {
+// 检测Web Speech API是否真正可用
+function canUseSpeechSynth() {
     try {
-        const tex = encodeURIComponent(text.substring(0, 100));
-        const tl = lang === 'en-US' ? 'en' : 'zh';
-        // 百度翻译TTS（公开免费）
-        const url = 'https://fanyi.baidu.com/gettts?lan=' + tl + '&text=' + tex + '&spd=5';
+        if (!window.speechSynthesis) return false;
+        const ua = navigator.userAgent || '';
+        // 微信/QQ内置浏览器不支持
+        if (/MicroMessenger|QQ\//i.test(ua)) return false;
+        // 安卓非Chrome浏览器通常不支持
+        if (/Android/i.test(ua) && !/Chrome/i.test(ua)) return false;
+        return true;
+    } catch(e) { return false; }
+}
+
+// 用Audio播放TTS（有道词典公开接口，国内可用）
+function speakByAudio(text, lang) {
+    try {
+        // 停止之前的播放
+        if (state._ttsAudio) {
+            state._ttsAudio.pause();
+            state._ttsAudio = null;
+        }
+
+        const shortText = text.substring(0, 100);
+        let url;
+
+        if (lang === 'en-US') {
+            // 英文：有道TTS
+            url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(shortText) + '&type=2';
+        } else {
+            // 中文：有道TTS
+            url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(shortText) + '&type=1';
+        }
+
         const audio = new Audio(url);
         audio.volume = 1.0;
+        state._ttsAudio = audio;
         audio.play().catch(function() {
-            // 最终备用：用有道TTS
-            speakYoudaoTTS(text, lang);
+            // 有道不行，试百度
+            speakByBaidu(shortText, lang);
         });
     } catch(e) {
-        speakYoudaoTTS(text, lang);
+        speakByBaidu(text, lang);
     }
 }
 
-// 最终备用：有道TTS
-function speakYoudaoTTS(text, lang) {
+// 百度翻译TTS备用
+function speakByBaidu(text, lang) {
     try {
-        const tl = lang === 'en-US' ? 'en' : 'zh-CHS';
-        const url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text.substring(0, 100)) + '&type=1';
+        const tl = lang === 'en-US' ? 'en' : 'zh';
+        const url = 'https://fanyi.baidu.com/gettts?lan=' + tl + '&text=' + encodeURIComponent(text) + '&spd=5';
         const audio = new Audio(url);
         audio.volume = 1.0;
-        audio.play().catch(function() {
-            console.log('所有朗读方案都失败了');
-        });
+        audio.play().catch(function() {});
     } catch(e) {}
 }
 
