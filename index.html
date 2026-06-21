@@ -3421,17 +3421,43 @@ function startVoice() {
 }
 
 function speakText(text, lang) {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang || 'zh-CN';
-    utterance.rate = 0.75;   // 语速稍慢，方便听清
-    utterance.pitch = 1;
-    utterance.volume = 0.5;  // 音量降低到一半
-    if (lang === 'en-US') {
-        utterance.rate = 0.65;
+    lang = lang || 'zh-CN';
+
+    // 方案1：Web Speech API（大多数浏览器支持）
+    if ('speechSynthesis' in window && window.speechSynthesis.getVoices().length > 0) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        utterance.rate = 0.75;
+        utterance.pitch = 1;
+        utterance.volume = 0.5;
+        if (lang === 'en-US') utterance.rate = 0.65;
+
+        // 播放失败时用备用方案
+        utterance.onerror = function() { speakFallback(text, lang); };
+        window.speechSynthesis.speak(utterance);
+        return;
     }
-    window.speechSynthesis.speak(utterance);
+
+    // 方案2：Google TTS（安卓备用）
+    speakFallback(text, lang);
+}
+
+// 备用朗读方案：用 Google Translate TTS
+function speakFallback(text, lang) {
+    try {
+        const tl = lang === 'en-US' ? 'en' : 'zh-CN';
+        // 限制文本长度（Google TTS 有长度限制）
+        const shortText = text.substring(0, 200);
+        const url = 'https://translate.google.com/translate_tts?ie=UTF-8&tl=' + tl + '&client=tw-ob&q=' + encodeURIComponent(shortText);
+        const audio = new Audio(url);
+        audio.play().catch(function() {
+            // 如果 Google TTS 也失败，静默处理
+            console.log('朗读失败，请检查网络');
+        });
+    } catch(e) {
+        console.log('朗读不可用');
+    }
 }
 
 
@@ -3866,12 +3892,30 @@ function analyzeErrors(text) {
     }
     const charFreq = state._charFreq;
 
+    // 第零步：标记属于长词（3-4字）的字符位置，跳过它们
+    const skipPos = new Set();
+    const isChinese = c => /[一-鿿]/.test(c);
+    // 先检查4字词，再检查3字词（长词优先）
+    for (let len = Math.min(4, text.length); len >= 3; len--) {
+        for (let i = 0; i <= text.length - len; i++) {
+            const word = text.substring(i, i + len);
+            if (word.split('').every(isChinese) && VALID_WORDS.has(word)) {
+                for (let j = 0; j < len; j++) {
+                    skipPos.add(i + j);
+                }
+            }
+        }
+    }
+
     for (let i = 0; i < text.length - 1; i++) {
         const c1 = text[i];
         const c2 = text[i + 1];
 
         if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c1)) continue;
         if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c2)) continue;
+
+        // 如果这个位置属于一个已确认的长词，跳过
+        if (skipPos.has(i) && skipPos.has(i + 1)) continue;
 
         const bigram = c1 + c2;
 
