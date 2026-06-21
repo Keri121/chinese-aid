@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>文字助手 v3 — 帮你认字、写字、学英文</title>
+    <title>文字助手 v4 — 帮你认字、写字、学英文</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -613,6 +613,12 @@
     ⚠️ 当前没有网络，语音和手写识别暂时不可用，其他功能正常
 </div>
 
+<!-- 浏览器提示（安卓微信/QQ里显示） -->
+<div id="browserHint" style="display:none; background:#FFF3E0; color:#E65100; padding:12px 16px; font-size:15px; line-height:1.6; text-align:center; border-bottom:1px solid #FFE0B2;">
+    📱 语音和朗读功能需要 <strong>Chrome浏览器</strong> 才能正常使用<br>
+    <a href="https://www.google.cn/chrome/" style="color:#1565C0; font-weight:600;">👉 点击下载Chrome（免费）</a>
+</div>
+
 <!-- ===== 主内容区 ===== -->
 <div class="main">
 
@@ -675,6 +681,9 @@
                 <div id="checkResultContent"></div>
             </div>
             <div id="checkCorrections"></div>
+            <div style="margin-top:16px; text-align:center;">
+                <button class="btn btn-outline btn-large" onclick="document.getElementById('checkResult').style.display='none'">🔄 重新输入</button>
+            </div>
         </div>
     </div>
 
@@ -704,7 +713,10 @@
 
         <!-- 题目区 -->
         <div class="card" id="quizCard">
-            <div class="quiz-progress" id="quizProgress">第 1 / 10 题</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div class="quiz-progress" id="quizProgress" style="margin-bottom:0;">第 1 / 10 题</div>
+                <button class="btn btn-outline btn-sm" onclick="exitPractice()" style="padding:6px 12px; min-height:32px; font-size:14px;">✕ 退出</button>
+            </div>
             <div class="quiz-question" id="quizQuestion"></div>
             <div class="quiz-options" id="quizOptions"></div>
             <div class="quiz-feedback" id="quizFeedback" style="display:none;"></div>
@@ -786,6 +798,9 @@
         <!-- 查字详情 -->
         <div id="lookupDetail" style="display:none;">
             <div class="card">
+                <div style="text-align:right; margin-bottom:8px;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('lookupDetail').style.display='none'" style="padding:6px 12px; font-size:14px;">✕ 关闭</button>
+                </div>
                 <div id="lookupDetailContent"></div>
             </div>
         </div>
@@ -814,8 +829,9 @@
 
         <!-- 今日学习 -->
         <div class="card" id="learnCard" style="display:none;">
-            <div style="text-align:center; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                 <span id="learnPhase" style="font-size:16px; color:var(--text-light); background:var(--secondary-light); padding:4px 12px; border-radius:8px;">📖 新字</span>
+                <button class="btn btn-outline btn-sm" onclick="exitLearning()" style="padding:6px 12px; min-height:32px; font-size:14px;">✕ 退出</button>
             </div>
             <div class="char-card">
                 <div class="big-char" id="learnChar"></div>
@@ -4726,6 +4742,16 @@ function nextQuestion() {
     showQuestion();
 }
 
+function exitPractice() {
+    if (state.quizIndex > 0) {
+        if (!confirm('确定要退出练习吗？')) return;
+    }
+    document.getElementById('quizCard').style.display = 'none';
+    document.getElementById('practiceStart').style.display = 'block';
+    state.quizIndex = 0;
+    state.quizCorrect = 0;
+}
+
 function finishPractice() {
     document.getElementById('quizCard').style.display = 'none';
     document.getElementById('practiceStart').style.display = 'block';
@@ -5254,6 +5280,14 @@ function learnPhrase(phrase) {
     saveState();
 }
 
+function exitLearning() {
+    document.getElementById('learnCard').style.display = 'none';
+    document.getElementById('learnStart').style.display = 'block';
+    state.learnQueue = [];
+    state.currentLearnIndex = 0;
+    updateLearnStats();
+}
+
 function finishLearning() {
     document.getElementById('learnCard').style.display = 'none';
     document.getElementById('learnStart').style.display = 'block';
@@ -5393,6 +5427,13 @@ window.addEventListener('DOMContentLoaded', () => {
     updateOnlineStatus();
     updateDailyStats();
     updateLearnStats();
+
+    // 检测是否在微信/QQ等限制浏览器里
+    const ua = navigator.userAgent || '';
+    const isLimited = /MicroMessenger|QQ\/|weibo|douban|Alipay/i.test(ua);
+    if (isLimited) {
+        document.getElementById('browserHint').style.display = 'block';
+    }
 
     // 加载外部词典文件（10万词）
     fetch('words.json')
