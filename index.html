@@ -3422,42 +3422,65 @@ function startVoice() {
 
 function speakText(text, lang) {
     lang = lang || 'zh-CN';
+    const shortText = text.substring(0, 200);
 
-    // 方案1：Web Speech API（大多数浏览器支持）
-    if ('speechSynthesis' in window && window.speechSynthesis.getVoices().length > 0) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang;
-        utterance.rate = 0.75;
-        utterance.pitch = 1;
-        utterance.volume = 0.5;
-        if (lang === 'en-US') utterance.rate = 0.65;
+    // 方案1：Web Speech API（iOS Safari、桌面Chrome等支持）
+    try {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(shortText);
+            utterance.lang = lang;
+            utterance.rate = 0.75;
+            utterance.pitch = 1;
+            utterance.volume = 1.0; // 安卓需要音量=1
+            if (lang === 'en-US') utterance.rate = 0.65;
 
-        // 播放失败时用备用方案
-        utterance.onerror = function() { speakFallback(text, lang); };
-        window.speechSynthesis.speak(utterance);
-        return;
-    }
+            let spoke = false;
+            utterance.onstart = function() { spoke = true; };
 
-    // 方案2：Google TTS（安卓备用）
-    speakFallback(text, lang);
+            window.speechSynthesis.speak(utterance);
+
+            // 如果500ms内没开始播放，用备用方案
+            setTimeout(function() {
+                if (!spoke) speakBaiduTTS(shortText, lang);
+            }, 500);
+            return;
+        }
+    } catch(e) {}
+
+    // 方案2：百度TTS（国内可用，免费）
+    speakBaiduTTS(shortText, lang);
 }
 
-// 备用朗读方案：用 Google Translate TTS
-function speakFallback(text, lang) {
+// 备用朗读：百度在线TTS（公开接口，国内可用）
+function speakBaiduTTS(text, lang) {
     try {
-        const tl = lang === 'en-US' ? 'en' : 'zh-CN';
-        // 限制文本长度（Google TTS 有长度限制）
-        const shortText = text.substring(0, 200);
-        const url = 'https://translate.google.com/translate_tts?ie=UTF-8&tl=' + tl + '&client=tw-ob&q=' + encodeURIComponent(shortText);
+        const tex = encodeURIComponent(text.substring(0, 100));
+        const tl = lang === 'en-US' ? 'en' : 'zh';
+        // 百度翻译TTS（公开免费）
+        const url = 'https://fanyi.baidu.com/gettts?lan=' + tl + '&text=' + tex + '&spd=5';
         const audio = new Audio(url);
+        audio.volume = 1.0;
         audio.play().catch(function() {
-            // 如果 Google TTS 也失败，静默处理
-            console.log('朗读失败，请检查网络');
+            // 最终备用：用有道TTS
+            speakYoudaoTTS(text, lang);
         });
     } catch(e) {
-        console.log('朗读不可用');
+        speakYoudaoTTS(text, lang);
     }
+}
+
+// 最终备用：有道TTS
+function speakYoudaoTTS(text, lang) {
+    try {
+        const tl = lang === 'en-US' ? 'en' : 'zh-CHS';
+        const url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text.substring(0, 100)) + '&type=1';
+        const audio = new Audio(url);
+        audio.volume = 1.0;
+        audio.play().catch(function() {
+            console.log('所有朗读方案都失败了');
+        });
+    } catch(e) {}
 }
 
 
