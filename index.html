@@ -3468,16 +3468,10 @@ function speakText(text, lang) {
     speakByAudio(shortText, lang);
 }
 
-// 检测Web Speech API是否真正可用
+// 检测Web Speech API是否可用
 function canUseSpeechSynth() {
     try {
-        if (!window.speechSynthesis) return false;
-        const ua = navigator.userAgent || '';
-        // 微信/QQ内置浏览器不支持
-        if (/MicroMessenger|QQ\//i.test(ua)) return false;
-        // 安卓非Chrome浏览器通常不支持
-        if (/Android/i.test(ua) && !/Chrome/i.test(ua)) return false;
-        return true;
+        return !!window.speechSynthesis;
     } catch(e) { return false; }
 }
 
@@ -4585,8 +4579,20 @@ function makeConfusableSentence(correct, wrong, explain) {
         return { question: '填空：' + s.sentence.replace('__', '（  ）') };
     }
 
-    // 没有现成句子，用通用格式
-    return { question: '下面哪个字是对的？' };
+    // 没有现成句子，从explain中提取例词生成填空题
+    // explain格式如："'已经'用'已'，'以前'用'以'"
+    const matches = explain.match(/'([^']+)'/g);
+    if (matches && matches.length >= 2) {
+        const word1 = matches[0].replace(/'/g, '');
+        const word2 = matches[1].replace(/'/g, '');
+        // 用例词造一个填空题
+        return { question: '填空：' + word1.charAt(0) + '（  ）' + (word1.length > 1 ? word1.substring(1) : '') + ' 和 ' + word2.charAt(0) + '（  ）' + (word2.length > 1 ? word2.substring(1) : '') + '，哪个用 "' + correct + '"？' };
+    }
+
+    // 最终回退：用拼音提示
+    const info = PINYIN_DICT[correct];
+    const py = info ? info.py : '';
+    return { question: '下面哪个字读 "' + py + '"？' };
 }
 
 function generateQuestions(level) {
