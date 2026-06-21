@@ -3368,11 +3368,9 @@ function startVoice() {
         showToast('⚠️ 语音识别需要网络');
         return;
     }
+    // 每次都重新初始化（避免缓存旧状态）
+    state.recognition = initSpeechRecognition();
     if (!state.recognition) {
-        state.recognition = initSpeechRecognition();
-    }
-    if (!state.recognition) {
-        // 已经在 initSpeechRecognition 里提示过了
         return;
     }
 
@@ -3459,7 +3457,7 @@ function speakText(text, lang) {
             u.lang = lang;
             u.rate = 0.8;
             u.pitch = 1;
-            u.volume = 1.0;
+            u.volume = 0.4;
             if (lang === 'en-US') u.rate = 0.7;
             u.onstart = function() { played = true; };
             u.onerror = function() { if (!played) speakByAudio(shortText, lang); };
@@ -4579,26 +4577,32 @@ function makeConfusableSentence(correct, wrong, explain) {
     let sentences = CONFUSABLE_SENTENCES[key1] || CONFUSABLE_SENTENCES[key2];
 
     if (sentences && sentences.length > 0) {
-        // 随机选一个句子
+        // 随机选一个句子（句子自带answer字段，决定正确答案）
         const s = sentences[Math.floor(Math.random() * sentences.length)];
-        return { question: '填空：' + s.sentence.replace('__', '（  ）') };
+        return {
+            question: '填空：' + s.sentence.replace('__', '（  ）'),
+            answer: s.answer // 答案从句子数据取，不从CONFUSABLES取
+        };
     }
 
     // 没有现成句子，从explain中提取例词做填空
     const matches = explain.match(/'([^']+)'/g);
     if (matches) {
-        // 找一个多字词（至少2个字）来做填空
         for (const m of matches) {
             const word = m.replace(/'/g, '');
             if (word.length >= 2 && word.includes(correct)) {
                 const blank = word.replace(correct, '___');
-                return { question: '填空：' + blank };
+                return { question: '填空：' + blank, answer: correct };
+            }
+            if (word.length >= 2 && word.includes(wrong)) {
+                const blank = word.replace(wrong, '___');
+                return { question: '填空：' + blank, answer: wrong };
             }
         }
     }
 
-    // 没有多字例词，直接用explain做说明题
-    return { question: explain.replace(/'/g, '"') + ' → 哪个对？' };
+    // 最终回退
+    return { question: explain.replace(/'/g, '"') + ' → 哪个对？', answer: correct };
 }
 
 function generateQuestions(level) {
@@ -4623,18 +4627,17 @@ function generateQuestions(level) {
             });
         }
     } else if (level === 'medium') {
-        // 中等题：易混字辨析
+        // 中等题：句子填空（答案从句子语境判断，不从CONFUSABLES顺序取）
         const confusablePairs = shuffle([...CONFUSABLES]).slice(0, 10);
         for (const [correct, wrong, explain] of confusablePairs) {
-            // 生成句子填空题（有上下文才能判断对错）
             const sentence = makeConfusableSentence(correct, wrong, explain);
             questions.push({
                 type: 'confusable',
                 question: sentence.question,
-                answer: correct,
-                options: shuffle([correct, wrong]),
+                answer: sentence.answer, // 答案从句子取
+                options: shuffle([correct, wrong]), // 选项随机排列
                 explain: explain,
-                char: correct
+                char: sentence.answer
             });
         }
     }
