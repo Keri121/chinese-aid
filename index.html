@@ -3978,7 +3978,7 @@ function displayCheckResult(text, errors) {
         <div style="font-size:18px; color:var(--error); margin-bottom:8px;">
             发现 <strong>${errors.length}</strong> 个可能的错别字
         </div>
-        <div class="result-text">${highlighted}</div>
+        <div class="result-text" onclick="speakText('${text.replace(/'/g, "\\'")}')" style="cursor:pointer;">${highlighted}<div style="font-size:14px; color:var(--text-light); margin-top:8px;">👆 点这里听一遍原文</div></div>
     `;
 
     // 显示每个纠正
@@ -3991,17 +3991,20 @@ function displayCheckResult(text, errors) {
             : (firstCharInfo ? firstCharInfo.py : '');
         const btnText = isPhrase ? '📖 学一下这个词' : '📖 学一下这个字';
         const btnAction = isPhrase ? `learnPhrase('${err.correct}')` : `learnChar('${err.correct}')`;
+        const speakMsg = err.correct.length > 1
+            ? '这里' + err.wrong + '应该是' + err.correct + '，' + pinyin
+            : '这里' + err.wrong + '写错了，应该是' + err.correct + '，' + (pinyin || '') + err.correct;
         correctionsHtml += `
-            <div class="correction-card">
+            <div class="correction-card" onclick="speakText('${speakMsg.replace(/'/g, "\\'")}')" style="cursor:pointer;">
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <span class="wrong">${err.wrong}</span>
                     <span style="font-size:24px;">→</span>
                     <span class="right">${err.correct}</span>
                     ${pinyin ? '<span style="font-size:18px; color:var(--primary);">(' + pinyin + ')</span>' : ''}
-                    <button class="btn btn-outline btn-sm" style="padding:6px 12px; min-height:36px; font-size:16px;" onclick="speakText('${err.correct}', 'zh-CN')">🔊 听</button>
+                    <span style="font-size:20px;">🔊 点我听</span>
                 </div>
                 <div class="explain">${err.explain}</div>
-                <button class="btn btn-outline btn-sm" style="margin-top:10px; padding:8px 16px; min-height:40px; font-size:15px;" onclick="${btnAction}">
+                <button class="btn btn-outline btn-sm" style="margin-top:10px; padding:8px 16px; min-height:40px; font-size:15px;" onclick="event.stopPropagation();${btnAction}">
                     ${btnText}
                 </button>
             </div>
@@ -4028,12 +4031,8 @@ function displayCheckResult(text, errors) {
 
     correctionsDiv.innerHTML = correctionsHtml;
 
-    // 语音播报纠错
-    let speakMsg = `发现了${errors.length}个可能的错别字。`;
-    errors.forEach(err => {
-        speakMsg += `${err.wrong}可能是${err.correct}。${err.explain}。`;
-    });
-    speakText(speakMsg);
+    // 语音播报：简短提示，详细内容靠点击
+    speakText('发现了' + errors.length + '个错别字，点一下听详情');
 
     // 记录到错题本
     errors.forEach(err => {
