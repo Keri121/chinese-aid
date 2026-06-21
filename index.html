@@ -3748,23 +3748,23 @@ function analyzeErrors(text) {
         }
     }
 
-    // ========== 核心检测：以词典为标准，不在词典里的组合找同音字替换 ==========
+    // ========== 核心检测：词典 + 同音字替换 ==========
+    // 规则：词组不在词典里 → 尝试同音字替换 → 替换后在词典里才标记
+    // 不在词典里且没有替换方案 → 跳过（可能是正常句子结构）
     for (let i = 0; i < text.length - 1; i++) {
         const c1 = text[i];
         const c2 = text[i + 1];
 
-        // 跳过标点和空格
         if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c1)) continue;
         if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c2)) continue;
 
         const bigram = c1 + c2;
 
-        // 如果这个词组存在于词典，没问题
+        // 词组在词典里 → 没问题
         if (VALID_WORDS.has(bigram)) continue;
 
-        // 这个二字组合不在词典里！
-        // 尝试找同音字替换，看看能不能变成一个词典里的词
-        // 先尝试替换第一个字
+        // 词组不在词典里 → 尝试同音字替换
+        // 尝试替换第一个字
         if (!seen.has(i + ':' + c1)) {
             const fix1 = findHomophoneFix(c1, c2, false);
             if (fix1) {
@@ -3780,7 +3780,7 @@ function analyzeErrors(text) {
             }
         }
 
-        // 再尝试替换第二个字
+        // 尝试替换第二个字
         if (!seen.has((i + 1) + ':' + c2)) {
             const fix2 = findHomophoneFix(c2, c1, true);
             if (fix2) {
@@ -3826,24 +3826,21 @@ function findHomophoneFix(badChar, neighbor, isSecond) {
     const badPinyin = getPinyinBase(badChar);
     if (!badPinyin) return null;
 
-    // 收集候选字：同音字 + 形近字
+    // 只收集同音字（单字，拼音完全相同）
     const candidates = new Set();
 
-    // 同音字
     for (const [char, info] of Object.entries(PINYIN_DICT)) {
+        if (char.length !== 1) continue; // 只比较单字，跳过"学校"等多字key
         if (char === badChar) continue;
         const py = getPinyinBase(char);
-        if (py === badPinyin) candidates.add(char);
-        else if (py && isSimilarPinyin(py, badPinyin)) candidates.add(char);
+        if (!py) continue;
+        // 严格匹配：拼音完全相同
+        if (py === badPinyin) {
+            candidates.add(char);
+        }
     }
 
-    // 形近字
-    for (const [c, w] of CONFUSABLES) {
-        if (w === badChar) candidates.add(c);
-        if (c === badChar) candidates.add(w);
-    }
-
-    // 检查每个候选
+    // 检查每个候选：替换后是否形成词典里的词
     for (const candidate of candidates) {
         let testWord;
         if (isSecond) {
