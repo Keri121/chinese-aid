@@ -1,0 +1,4116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>文字助手 v3 — 帮你认字、写字、学英文</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        /* ===== 全局基础 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #E85D3A;
+            --primary-light: #FFF0EC;
+            --secondary: #2B7A78;
+            --secondary-light: #E8F5F4;
+            --bg: #FAFAF7;
+            --card: #FFFFFF;
+            --text: #2D2D2D;
+            --text-light: #666;
+            --border: #E5E5E5;
+            --success: #4CAF50;
+            --error: #E53935;
+            --warning: #FF9800;
+            --radius: 16px;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            font-size: 18px;
+        }
+
+        /* ===== 顶部标题栏 ===== */
+        .header {
+            background: var(--card);
+            padding: 16px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .header .subtitle {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        /* ===== 主内容区 ===== */
+        .main {
+            flex: 1;
+            padding: 16px;
+            padding-bottom: 100px;
+            overflow-y: auto;
+        }
+
+        /* ===== 页面切换 ===== */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* ===== 底部导航 ===== */
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            display: flex;
+            border-top: 1px solid var(--border);
+            padding: 8px 0;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+            z-index: 100;
+        }
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: none;
+            font-family: inherit;
+        }
+        .nav-item .icon {
+            font-size: 32px;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .nav-item .label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+        .nav-item.active .label {
+            color: var(--primary);
+        }
+        .nav-item.active .icon {
+            transform: scale(1.1);
+        }
+
+        /* ===== 卡片 ===== */
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        /* ===== 按钮 ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 28px;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            min-height: 56px;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { background: #D4502E; }
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text);
+        }
+        .btn-large {
+            width: 100%;
+            padding: 20px;
+            font-size: 22px;
+        }
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-error {
+            background: var(--error);
+            color: white;
+        }
+        .btn-sm {
+            padding: 10px 18px;
+            font-size: 16px;
+            min-height: 44px;
+        }
+
+        /* ===== 输入区域 ===== */
+        .input-area {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            font-size: 22px;
+            line-height: 1.8;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            resize: vertical;
+            font-family: inherit;
+            color: var(--text);
+            background: var(--card);
+        }
+        .input-area:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .input-area::placeholder {
+            color: #bbb;
+            font-size: 20px;
+        }
+
+        /* ===== 语音按钮 ===== */
+        .voice-btn {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 16px auto;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(232, 93, 58, 0.3);
+        }
+        .voice-btn:active {
+            transform: scale(0.9);
+        }
+        .voice-btn.recording {
+            background: var(--error);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4); }
+            50% { box-shadow: 0 0 0 20px rgba(229, 57, 53, 0); }
+        }
+        .voice-hint {
+            text-align: center;
+            font-size: 16px;
+            color: var(--text-light);
+            margin-top: 8px;
+        }
+
+        /* ===== 手写区域 ===== */
+        .canvas-wrap {
+            position: relative;
+            margin: 12px 0;
+        }
+        .canvas-wrap canvas {
+            width: 100%;
+            height: 200px;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            background: #fff;
+            touch-action: none;
+        }
+        .canvas-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .canvas-actions .btn { flex: 1; }
+
+        /* ===== 错字高亮 ===== */
+        .error-char {
+            color: var(--error);
+            font-weight: 700;
+            text-decoration: underline wavy var(--error);
+            padding: 2px 4px;
+            border-radius: 4px;
+            background: #FFEBEE;
+        }
+        .correct-char {
+            color: var(--success);
+            font-weight: 700;
+        }
+        .result-text {
+            font-size: 30px;
+            line-height: 2;
+            padding: 16px;
+            background: #FAFAF7;
+            border-radius: 12px;
+        }
+        .correction-card {
+            background: #FFF8E1;
+            border-left: 4px solid var(--warning);
+            border-radius: 0 12px 12px 0;
+            padding: 16px;
+            margin: 12px 0;
+        }
+        .correction-card .wrong {
+            font-size: 28px;
+            color: var(--error);
+            font-weight: 700;
+            text-decoration: line-through;
+        }
+        .correction-card .right {
+            font-size: 28px;
+            color: var(--success);
+            font-weight: 700;
+        }
+        .correction-card .explain {
+            font-size: 18px;
+            color: var(--text);
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+
+        /* ===== 英文标签 ===== */
+        .en-word {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #E3F2FD;
+            color: #1565C0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 4px;
+            transition: all 0.2s;
+        }
+        .en-word:active {
+            background: #BBDEFB;
+        }
+        .en-word .speaker {
+            font-size: 16px;
+        }
+
+        /* ===== 学认字 - 大字卡 ===== */
+        .char-card {
+            text-align: center;
+            padding: 32px 20px;
+        }
+        .char-card .big-char {
+            font-size: 120px;
+            font-weight: 900;
+            line-height: 1.2;
+            color: var(--text);
+        }
+        .char-card .pinyin {
+            font-size: 28px;
+            color: var(--primary);
+            margin-top: 8px;
+        }
+        .char-card .meaning {
+            font-size: 20px;
+            color: var(--text-light);
+            margin-top: 8px;
+        }
+        .char-card .en-translation {
+            margin-top: 12px;
+        }
+        .char-card .learn-btn {
+            margin-top: 20px;
+        }
+
+        /* ===== 练习选项 ===== */
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .quiz-option {
+            padding: 20px;
+            font-size: 30px;
+            font-weight: 700;
+            border: 3px solid var(--border);
+            border-radius: 12px;
+            background: var(--card);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-family: inherit;
+        }
+        .quiz-option:active {
+            transform: scale(0.96);
+        }
+        .quiz-option.correct {
+            border-color: var(--success);
+            background: #E8F5E9;
+            color: var(--success);
+        }
+        .quiz-option.wrong {
+            border-color: var(--error);
+            background: #FFEBEE;
+            color: var(--error);
+        }
+        .quiz-question {
+            font-size: 28px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .quiz-feedback {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 600;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 12px 0;
+        }
+        .quiz-feedback.correct {
+            background: #E8F5E9;
+            color: var(--success);
+        }
+        .quiz-feedback.wrong {
+            background: #FFEBEE;
+            color: var(--error);
+        }
+        .quiz-progress {
+            text-align: center;
+            font-size: 16px;
+            color: var(--text-light);
+            margin-bottom: 16px;
+        }
+
+        /* ===== 查字结果 ===== */
+        .lookup-result {
+            padding: 16px;
+            margin: 12px 0;
+        }
+        .lookup-char {
+            font-size: 64px;
+            font-weight: 900;
+            text-align: center;
+        }
+        .lookup-pinyin {
+            font-size: 24px;
+            text-align: center;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+        .lookup-words {
+            margin-top: 12px;
+            font-size: 20px;
+            line-height: 2;
+        }
+        .lookup-words span {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 8px;
+            margin: 4px;
+            font-weight: 600;
+        }
+
+        /* ===== 每日进度 ===== */
+        .daily-bar {
+            background: var(--border);
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .daily-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--warning));
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        .daily-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 16px 0;
+        }
+        .daily-stat {
+            text-align: center;
+        }
+        .daily-stat .num {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--primary);
+        }
+        .daily-stat .label {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        /* ===== 工具栏 ===== */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+
+        /* ===== 模式切换 ===== */
+        .mode-tabs {
+            display: flex;
+            background: var(--border);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        .mode-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            background: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            color: var(--text-light);
+            transition: all 0.2s;
+        }
+        .mode-tab.active {
+            background: var(--card);
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* ===== Toast 提示 ===== */
+        .toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: var(--text);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 18px;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== 选项切换按钮 ===== */
+        .input-method-toggle {
+            display: flex;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .input-method-toggle .btn {
+            flex: 1;
+            font-size: 17px;
+            padding: 12px;
+            min-height: 48px;
+        }
+
+        /* ===== 离线提示 ===== */
+        .offline-notice {
+            background: #FFF3E0;
+            color: #E65100;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: none;
+        }
+        .offline-notice.show { display: block; }
+
+        /* ===== 学习记录列表 ===== */
+        .record-list {
+            list-style: none;
+        }
+        .record-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .record-item:last-child { border-bottom: none; }
+        .record-item .char {
+            font-size: 40px;
+            font-weight: 900;
+            width: 60px;
+            text-align: center;
+        }
+        .record-item .info {
+            flex: 1;
+        }
+        .record-item .info .name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .record-item .info .detail {
+            font-size: 15px;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+        .record-item .status {
+            font-size: 28px;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (min-width: 600px) {
+            .main { max-width: 560px; margin: 0 auto; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部标题 -->
+<div class="header">
+    <h1>📝 文字助手</h1>
+    <div class="subtitle">帮你认字、写字、学英文</div>
+</div>
+
+<!-- Toast 提示 -->
+<div class="toast" id="toast"></div>
+
+<!-- 离线提示 -->
+<div class="offline-notice" id="offlineNotice">
+    ⚠️ 当前没有网络，语音和手写识别暂时不可用，其他功能正常
+</div>
+
+<!-- ===== 主内容区 ===== -->
+<div class="main">
+
+    <!-- ========== 页面1：帮我检查 ========== -->
+    <div class="page active" id="page-check">
+        <!-- 输入方式选择 -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" onclick="switchInputMode('voice')">🎤 说话</button>
+            <button class="mode-tab" onclick="switchInputMode('type')">⌨️ 打字</button>
+            <button class="mode-tab" onclick="switchInputMode('write')">✍️ 写字</button>
+        </div>
+
+        <!-- 语音输入 -->
+        <div id="input-voice" class="card">
+            <div class="card-title">🎤 对着手机说一句话</div>
+            <button class="voice-btn" id="voiceBtn" ontouchstart="startVoice()" onmousedown="startVoice()">
+                🎤
+            </button>
+            <div class="voice-hint" id="voiceHint">点一下开始说话</div>
+            <div id="voiceResult" style="margin-top:16px; display:none;">
+                <div class="result-text" id="voiceResultText"></div>
+                <div style="margin-top:12px; display:flex; gap:10px;">
+                    <button class="btn btn-outline btn-sm" onclick="startVoice()">🔄 再说一次</button>
+                    <button class="btn btn-primary btn-sm" onclick="checkText('voiceResultText')">✅ 检查这段话</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 打字输入 -->
+        <div id="input-type" class="card" style="display:none;">
+            <div class="card-title">⌨️ 输入一段话</div>
+            <textarea class="input-area" id="typeInput" placeholder="在这里输入文字..."></textarea>
+            <div style="margin-top:12px;">
+                <button class="btn btn-primary btn-large" onclick="checkText('typeInput')">✅ 检查错别字</button>
+            </div>
+        </div>
+
+        <!-- 手写输入 -->
+        <div id="input-write" class="card" style="display:none;">
+            <div class="card-title">✍️ 用手写键盘写字</div>
+            <div style="background:#E8F5F4; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <div style="font-size:18px; font-weight:600; color:var(--secondary); margin-bottom:8px;">📱 怎么用手写？</div>
+                <div style="font-size:16px; color:var(--text); line-height:1.8;">
+                    1. 点下面的输入框，弹出键盘<br>
+                    2. 在键盘上找 ✏️ 或 🖊 图标，点一下切换到手写<br>
+                    3. 在键盘区域用手指写字，手机会自动认出来<br>
+                    4. 写完后点"检查错别字"
+                </div>
+            </div>
+            <textarea class="input-area" id="writeInput" placeholder="👆 点这里弹出键盘，用手写模式写字" style="min-height:100px; font-size:24px;"></textarea>
+            <div style="margin-top:12px;">
+                <button class="btn btn-primary btn-large" onclick="checkText('writeInput')">✅ 检查错别字</button>
+            </div>
+        </div>
+
+        <!-- 检查结果区 -->
+        <div id="checkResult" style="display:none;">
+            <div class="card">
+                <div class="card-title">📋 检查结果</div>
+                <div id="checkResultContent"></div>
+            </div>
+            <div id="checkCorrections"></div>
+        </div>
+    </div>
+
+    <!-- ========== 页面2：练一练 ========== -->
+    <div class="page" id="page-practice">
+        <div class="card">
+            <div class="card-title">🎮 今天练一练</div>
+            <div class="daily-stats">
+                <div class="daily-stat">
+                    <div class="num" id="dailyDone">0</div>
+                    <div class="label">今天做了</div>
+                </div>
+                <div class="daily-stat">
+                    <div class="num" id="dailyCorrect">0</div>
+                    <div class="label">答对了</div>
+                </div>
+                <div class="daily-stat">
+                    <div class="num" id="dailyStreak">0</div>
+                    <div class="label">连续天数</div>
+                </div>
+            </div>
+            <div class="daily-bar"><div class="fill" id="dailyFill" style="width:0%"></div></div>
+            <div style="text-align:center; font-size:15px; color:var(--text-light); margin-top:4px;">
+                每天练习10道题
+            </div>
+        </div>
+
+        <!-- 题目区 -->
+        <div class="card" id="quizCard">
+            <div class="quiz-progress" id="quizProgress">第 1 / 10 题</div>
+            <div class="quiz-question" id="quizQuestion"></div>
+            <div class="quiz-options" id="quizOptions"></div>
+            <div class="quiz-feedback" id="quizFeedback" style="display:none;"></div>
+            <div id="quizEnglish" style="text-align:center; margin:12px 0;"></div>
+            <div style="text-align:center; margin-top:16px;">
+                <button class="btn btn-primary btn-large" id="nextBtn" style="display:none;" onclick="nextQuestion()">
+                    下一题 →
+                </button>
+            </div>
+        </div>
+
+        <!-- 练习入口按钮 -->
+        <div id="practiceStart">
+            <button class="btn btn-primary btn-large" onclick="startPractice('easy')">
+                🌱 简单练习<br><span style="font-size:15px;font-weight:400;">常见字，入门级</span>
+            </button>
+            <div style="height:12px;"></div>
+            <button class="btn btn-secondary btn-large" onclick="startPractice('medium')">
+                🌿 中等练习<br><span style="font-size:15px;font-weight:400;">易混字，容易错的</span>
+            </button>
+            <div style="height:12px;"></div>
+            <button class="btn btn-outline btn-large" onclick="startPractice('review')">
+                🔄 复习错题<br><span style="font-size:15px;font-weight:400;">专门练你之前答错的</span>
+            </button>
+            <div style="height:12px;"></div>
+            <button class="btn btn-outline btn-large" onclick="startPractice('english')">
+                🌍 中英配对<br><span style="font-size:15px;font-weight:400;">认中文的同时学英文</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ========== 页面3：查一查 ========== -->
+    <div class="page" id="page-lookup">
+        <div class="mode-tabs">
+            <button class="mode-tab active" onclick="switchLookupMode('pinyin')">🔤 拼音</button>
+            <button class="mode-tab" onclick="switchLookupMode('speak')">🎤 说</button>
+            <button class="mode-tab" onclick="switchLookupMode('draw')">✍️ 画</button>
+        </div>
+
+        <!-- 拼音查询 -->
+        <div id="lookup-pinyin" class="card">
+            <div class="card-title">🔤 输入拼音找字</div>
+            <input type="text" class="input-area" id="pinyinInput"
+                   placeholder="比如输入: shui, pingguo, dian nao"
+                   style="min-height:56px; font-size:22px;"
+                   oninput="lookupByPinyin()">
+            <div id="pinyinResults" style="margin-top:16px;"></div>
+        </div>
+
+        <!-- 语音查询 -->
+        <div id="lookup-speak" class="card" style="display:none;">
+            <div class="card-title">🎤 说出来找字</div>
+            <p style="font-size:18px; color:var(--text-light); margin-bottom:16px;">
+                比如说："口天吴"、"木子李"、"大小的大"
+            </p>
+            <button class="voice-btn" id="lookupVoiceBtn" onclick="startLookupVoice()">🎤</button>
+            <div class="voice-hint" id="lookupVoiceHint">点一下，说出你要找的字</div>
+            <div id="lookupVoiceResult" style="margin-top:16px;"></div>
+        </div>
+
+        <!-- 手写查询 -->
+        <div id="lookup-draw" class="card" style="display:none;">
+            <div class="card-title">✍️ 手写找字</div>
+            <div style="background:#E8F5F4; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <div style="font-size:16px; color:var(--text); line-height:1.8;">
+                    👉 点下面输入框弹出键盘 → 切换到手写模式 → 写一个字 → 点"查找"
+                </div>
+            </div>
+            <input type="text" class="input-area" id="drawInput"
+                   placeholder="👆 点这里，用手写键盘写一个字"
+                   style="min-height:56px; font-size:32px; text-align:center;"
+                   maxlength="3">
+            <div style="margin-top:12px;">
+                <button class="btn btn-primary btn-large" onclick="lookupByDrawInput()">🔍 查找这个字</button>
+            </div>
+            <div id="lookupDrawResult" style="margin-top:16px;"></div>
+        </div>
+
+        <!-- 查字详情 -->
+        <div id="lookupDetail" style="display:none;">
+            <div class="card">
+                <div id="lookupDetailContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 页面4：学认字 ========== -->
+    <div class="page" id="page-learn">
+        <!-- 学习进度概览 -->
+        <div class="card">
+            <div class="card-title">📈 我的识字进度</div>
+            <div class="daily-stats">
+                <div class="daily-stat">
+                    <div class="num" id="learnedCount">0</div>
+                    <div class="label">已认识</div>
+                </div>
+                <div class="daily-stat">
+                    <div class="num" id="learningCount">0</div>
+                    <div class="label">学习中</div>
+                </div>
+                <div class="daily-stat">
+                    <div class="num" id="newCount">100</div>
+                    <div class="label">还没学</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 今日学习 -->
+        <div class="card" id="learnCard" style="display:none;">
+            <div class="char-card">
+                <div class="big-char" id="learnChar"></div>
+                <div class="pinyin" id="learnPinyin"></div>
+                <div class="meaning" id="learnMeaning"></div>
+                <div class="en-translation" id="learnEnglish"></div>
+                <div style="margin-top:16px;">
+                    <button class="btn btn-outline btn-sm" onclick="speakChar()">
+                        🔊 听一听
+                    </button>
+                </div>
+                <div class="learn-btn" style="margin-top:20px; display:flex; gap:10px;">
+                    <button class="btn btn-error btn-sm" style="flex:1;" onclick="markChar('hard')">
+                        😅 还不认识
+                    </button>
+                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="markChar('easy')">
+                        😊 认识了！
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 学习入口 -->
+        <div id="learnStart">
+            <button class="btn btn-primary btn-large" onclick="startLearning()">
+                📖 开始今天的识字课<br>
+                <span style="font-size:15px;font-weight:400;">每天学5个新字</span>
+            </button>
+            <div style="height:12px;"></div>
+            <button class="btn btn-outline btn-large" onclick="showLearnedChars()">
+                📚 看看我学过的字
+            </button>
+        </div>
+
+        <!-- 学过的字列表 -->
+        <div id="learnedList" style="display:none;">
+            <div class="card">
+                <div class="card-title">📚 我学过的字</div>
+                <ul class="record-list" id="learnedCharsList"></ul>
+                <div style="margin-top:16px;">
+                    <button class="btn btn-outline btn-large" onclick="hideLearnedChars()">返回</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== 底部导航 ===== -->
+<div class="nav">
+    <button class="nav-item active" onclick="switchPage('check')">
+        <span class="icon">📝</span>
+        <span class="label">帮我检查</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('practice')">
+        <span class="icon">🎮</span>
+        <span class="label">练一练</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('lookup')">
+        <span class="icon">🔍</span>
+        <span class="label">查一查</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('learn')">
+        <span class="icon">📖</span>
+        <span class="label">学认字</span>
+    </button>
+</div>
+
+<script>
+// ============================================================
+//  数据：常见易混字、拼音字典、英文对照
+// ============================================================
+
+// 常见易混淆字组（每组：[正确, 错误, 解释]）
+const CONFUSABLES = [
+    ["已", "以", "'已经'用'已'，'以前'用'以'"],
+    ["在", "再", "'正在'用'在'，'再见'用'再'"],
+    ["做", "作", "'做事'用'做'，'作业'用'作'"],
+    ["的", "地", "'我的'用'的'，'慢慢地'用'地'"],
+    ["的", "得", "'我的'用'的'，'跑得快'用'得'"],
+    ["地", "得", "'慢慢地'用'地'，'跑得快'用'得'"],
+    ["他", "她", "男人用'他'，女人用'她'"],
+    ["那", "哪", "'那个'用'那'，'哪个'用'哪'"],
+    ["有", "又", "'有'表示拥有，'又'表示再一次"],
+    ["到", "道", "'到了'用'到'，'道路'用'道'"],
+    ["进", "近", "'进去'用'进'，'远近'用'近'"],
+    ["带", "戴", "'带东西'用'带'，'戴帽子'用'戴'"],
+    ["坐", "座", "'坐下'用'坐'，'座位'用'座'"],
+    ["买", "卖", "'买东西'用'买'，'卖东西'用'卖'（方向相反）"],
+    ["晴", "睛", "'晴天'用'晴（日字旁）'，'眼睛'用'睛（目字旁）'"],
+    ["清", "晴", "'清水'用'清（三点水）'，'晴天'用'晴（日字旁）'"],
+    ["请", "清", "'请问'用'请（言字旁）'，'清水'用'清（三点水）'"],
+    ["情", "请", "'事情'用'情（竖心旁）'，'请问'用'请（言字旁）'"],
+    ["很", "狠", "'很好'用'很'，'狠心'用'狠'"],
+    ["着", "看", "'看着'用'着'，'看见'用'看'"],
+    ["像", "象", "'好像'用'像'，'大象'用'象'"],
+    ["向", "像", "'方向'用'向'，'好像'用'像'"],
+    ["工", "公", "'工作'用'工'，'公共'用'公'"],
+    ["只", "支", "'一只鸡'用'只'，'一支笔'用'支'"],
+    ["个", "各", "'一个'用'个'，'各种'用'各'"],
+    ["人", "入", "'人'字两笔分开，'入'字两笔交叉"],
+    ["大", "太", "'大'字一点，'太'字多一点"],
+    ["王", "玉", "'王'字三横，'玉'字多一点"],
+    ["日", "目", "'日'是太阳，'目'是眼睛（多一横）"],
+    ["天", "夫", "'天'字上面一横短，'夫'字两横差不多长"],
+    ["木", "本", "'木'是树，'本'下面多一横（根本）"],
+    ["未", "末", "'未'来第一横短，'末'尾第一横长"],
+    ["午", "牛", "'午'字出头，'牛'字也出头但方向不同"],
+    ["鸟", "乌", "'鸟'有点（眼睛），'乌'没有（乌鸦太黑看不见）"],
+    ["问", "间", "'问'用口问，'间'在日月之间"],
+    ["处", "外", "'处'字里面是卜，'外'字右边是卜"],
+    ["休", "体", "'休息'用'休（人靠在木头旁）'，'身体'用'体'"],
+    ["从", "丛", "'从前'用'从'，'花丛'用'丛'"],
+    ["明", "朋", "'明'天有日有月，'朋'友两个月亮"],
+    ["和", "合", "'和平'用'和'，'合作'用'合'"],
+    ["元", "园", "'一元'用'元'，'公园'用'园'"],
+    ["圆", "园", "'圆形'用'圆'，'花园'用'园'"],
+    ["话", "画", "'说话'用'话'，'画画'用'画'"],
+    ["生", "声", "'生日'用'生'，'声音'用'声'"],
+    ["升", "生", "'上升'用'升'，'生日'用'生'"],
+    ["成", "城", "'成功'用'成'，'城市'用'城'"],
+    ["气", "汽", "'空气'用'气'，'汽油'用'汽'"],
+    ["力", "立", "'力气'用'力'，'站立'用'立'"],
+    ["意", "义", "'意思'用'意'，'义气'用'义'"],
+    ["长", "常", "'长大'用'长'，'经常'用'常'"],
+    ["正", "真", "'正在'用'正'，'真的'用'真'"],
+    ["知", "之", "'知道'用'知'，'之前'用'之'"],
+    ["时", "十", "'时间'用'时'，'十个'用'十'"],
+    ["是", "事", "'是的'用'是'，'事情'用'事'"],
+    ["说", "话", "'说话'都是，但'他说'用'说'，'电话'用'话'"],
+    ["想", "相", "'想念'用'想'，'相信'用'相'"],
+    ["心", "新", "'心里'用'心'，'新年'用'新'"],
+    ["行", "形", "'行走'用'行'，'形状'用'形'"],
+    ["花", "化", "'花朵'用'花'，'变化'用'化'"],
+    ["家", "加", "'回家'用'家'，'加油'用'加'"],
+    ["见", "间", "'看见'用'见'，'中间'用'间'"],
+    ["开", "关", "一对反义词：'开'门、'关'门"],
+    ["来", "米", "'来'字两横在上，'米'字十字交叉"],
+    ["里", "理", "'里面'用'里'，'道理'用'理'"],
+    ["年", "午", "'年'字下面出头，'午'字上面出头"],
+    ["平", "评", "'平安'用'平'，'评价'用'评'"],
+    ["千", "干", "'千'字上面有撇，'干'字两横一竖"],
+    ["去", "法", "'去'字上面是土，'法'字三点水旁"],
+];
+
+// 拼音字典（常用字 → 拼音 + 组词 + 英文）
+const PINYIN_DICT = {
+    "我": { py: "wǒ", words: ["我们","我的"], en: "I, me", emoji: "👤" },
+    "你": { py: "nǐ", words: ["你好","你们"], en: "you", emoji: "👤" },
+    "他": { py: "tā", words: ["他们","他的"], en: "he, him", emoji: "👨" },
+    "她": { py: "tā", words: ["她们","她的"], en: "she, her", emoji: "👩" },
+    "的": { py: "de", words: ["我的","好的"], en: "'s (possessive)", emoji: "" },
+    "了": { py: "le", words: ["好了","吃了"], en: "(past tense marker)", emoji: "" },
+    "是": { py: "shì", words: ["是的","不是"], en: "is, am, are", emoji: "" },
+    "不": { py: "bù", words: ["不是","不好"], en: "not, no", emoji: "" },
+    "在": { py: "zài", words: ["在家","现在"], en: "at, in", emoji: "" },
+    "有": { py: "yǒu", words: ["有人","没有"], en: "have", emoji: "" },
+    "这": { py: "zhè", words: ["这里","这个"], en: "this", emoji: "" },
+    "那": { py: "nà", words: ["那里","那个"], en: "that", emoji: "" },
+    "人": { py: "rén", words: ["人们","大人"], en: "person, people", emoji: "👥" },
+    "大": { py: "dà", words: ["大家","大人"], en: "big", emoji: "" },
+    "小": { py: "xiǎo", words: ["小孩","大小"], en: "small, little", emoji: "" },
+    "一": { py: "yī", words: ["一个","第一"], en: "one", emoji: "1️⃣" },
+    "二": { py: "èr", words: ["二月","第二"], en: "two", emoji: "2️⃣" },
+    "三": { py: "sān", words: ["三个","第三"], en: "three", emoji: "3️⃣" },
+    "四": { py: "sì", words: ["四个","四方"], en: "four", emoji: "4️⃣" },
+    "五": { py: "wǔ", words: ["五个","五月"], en: "five", emoji: "5️⃣" },
+    "六": { py: "liù", words: ["六个","六月"], en: "six", emoji: "6️⃣" },
+    "七": { py: "qī", words: ["七个","七天"], en: "seven", emoji: "7️⃣" },
+    "八": { py: "bā", words: ["八个","八月"], en: "eight", emoji: "8️⃣" },
+    "九": { py: "jiǔ", words: ["九个","九月"], en: "nine", emoji: "9️⃣" },
+    "十": { py: "shí", words: ["十个","十分"], en: "ten", emoji: "🔟" },
+    "上": { py: "shàng", words: ["上面","上学"], en: "up, above", emoji: "" },
+    "下": { py: "xià", words: ["下面","下午"], en: "down, below", emoji: "" },
+    "中": { py: "zhōng", words: ["中国","中间"], en: "middle, China", emoji: "" },
+    "吃": { py: "chī", words: ["吃饭","好吃"], en: "eat", emoji: "🍚" },
+    "喝": { py: "hē", words: ["喝水","喝茶"], en: "drink", emoji: "🥤" },
+    "水": { py: "shuǐ", words: ["水果","喝水"], en: "water", emoji: "💧" },
+    "火": { py: "huǒ", words: ["火车","大火"], en: "fire", emoji: "🔥" },
+    "山": { py: "shān", words: ["山上","高山"], en: "mountain", emoji: "⛰️" },
+    "水": { py: "shuǐ", words: ["水果","开水"], en: "water", emoji: "💧" },
+    "花": { py: "huā", words: ["花园","红花"], en: "flower", emoji: "🌸" },
+    "鸟": { py: "niǎo", words: ["小鸟","鸟叫"], en: "bird", emoji: "🐦" },
+    "鱼": { py: "yú", words: ["小鱼","金鱼"], en: "fish", emoji: "🐟" },
+    "马": { py: "mǎ", words: ["小马","白马"], en: "horse", emoji: "🐴" },
+    "牛": { py: "niú", words: ["牛奶","水牛"], en: "cow, cattle", emoji: "🐄" },
+    "羊": { py: "yáng", words: ["小羊","山羊"], en: "sheep, goat", emoji: "🐑" },
+    "鸡": { py: "jī", words: ["公鸡","母鸡"], en: "chicken", emoji: "🐔" },
+    "狗": { py: "gǒu", words: ["小狗","狗狗"], en: "dog", emoji: "🐶" },
+    "猫": { py: "māo", words: ["小猫","猫咪"], en: "cat", emoji: "🐱" },
+    "红": { py: "hóng", words: ["红色","红花"], en: "red", emoji: "🔴" },
+    "白": { py: "bái", words: ["白色","白天"], en: "white", emoji: "⚪" },
+    "黑": { py: "hēi", words: ["黑色","黑夜"], en: "black", emoji: "⚫" },
+    "蓝": { py: "lán", words: ["蓝色","蓝天"], en: "blue", emoji: "🔵" },
+    "绿": { py: "lǜ", words: ["绿色","绿树"], en: "green", emoji: "🟢" },
+    "黄": { py: "huáng", words: ["黄色","黄金"], en: "yellow", emoji: "🟡" },
+    "天": { py: "tiān", words: ["天上","今天"], en: "sky, day", emoji: "☀️" },
+    "地": { py: "dì", words: ["地上","大地"], en: "ground, earth", emoji: "🌍" },
+    "日": { py: "rì", words: ["日出","今日"], en: "sun, day", emoji: "☀️" },
+    "月": { py: "yuè", words: ["月亮","一月"], en: "moon, month", emoji: "🌙" },
+    "星": { py: "xīng", words: ["星星","星光"], en: "star", emoji: "⭐" },
+    "风": { py: "fēng", words: ["大风","风车"], en: "wind", emoji: "💨" },
+    "雨": { py: "yǔ", words: ["下雨","大雨"], en: "rain", emoji: "🌧️" },
+    "雪": { py: "xuě", words: ["下雪","雪花"], en: "snow", emoji: "❄️" },
+    "爸": { py: "bà", words: ["爸爸","老爸"], en: "dad, father", emoji: "👨" },
+    "妈": { py: "mā", words: ["妈妈","大妈"], en: "mom, mother", emoji: "👩" },
+    "爷": { py: "yé", words: ["爷爷","老爷"], en: "grandpa", emoji: "👴" },
+    "奶": { py: "nǎi", words: ["奶奶","牛奶"], en: "grandma, milk", emoji: "👵" },
+    "哥": { py: "gē", words: ["哥哥","大哥"], en: "older brother", emoji: "👦" },
+    "姐": { py: "jiě", words: ["姐姐","大姐"], en: "older sister", emoji: "👧" },
+    "弟": { py: "dì", words: ["弟弟","兄弟"], en: "younger brother", emoji: "👦" },
+    "妹": { py: "mèi", words: ["妹妹","姐妹"], en: "younger sister", emoji: "👧" },
+    "儿": { py: "ér", words: ["儿子","女儿"], en: "son, child", emoji: "" },
+    "子": { py: "zǐ", words: ["儿子","孩子"], en: "child", emoji: "" },
+    "好": { py: "hǎo", words: ["你好","好的"], en: "good", emoji: "" },
+    "早": { py: "zǎo", words: ["早上","早安"], en: "early, morning", emoji: "🌅" },
+    "晚": { py: "wǎn", words: ["晚上","晚安"], en: "late, evening", emoji: "🌙" },
+    "家": { py: "jiā", words: ["回家","家人"], en: "home, family", emoji: "🏠" },
+    "学": { py: "xué", words: ["学校","学习"], en: "study, learn", emoji: "📚" },
+    "校": { py: "xiào", words: ["学校","校园"], en: "school", emoji: "🏫" },
+    "老": { py: "lǎo", words: ["老师","老人"], en: "old, teacher", emoji: "" },
+    "师": { py: "shī", words: ["老师","师父"], en: "teacher", emoji: "👨‍🏫" },
+    "书": { py: "shū", words: ["书本","看书"], en: "book", emoji: "📖" },
+    "车": { py: "chē", words: ["汽车","火车"], en: "car, vehicle", emoji: "🚗" },
+    "路": { py: "lù", words: ["马路","走路"], en: "road", emoji: "🛣️" },
+    "门": { py: "mén", words: ["大门","开门"], en: "door, gate", emoji: "🚪" },
+    "开": { py: "kāi", words: ["开门","开心"], en: "open", emoji: "" },
+    "关": { py: "guān", words: ["关门","关心"], en: "close, care", emoji: "" },
+    "手": { py: "shǒu", words: ["手","手指"], en: "hand", emoji: "✋" },
+    "头": { py: "tóu", words: ["头上","头发"], en: "head", emoji: "" },
+    "眼": { py: "yǎn", words: ["眼睛","眼泪"], en: "eye", emoji: "👁️" },
+    "耳": { py: "ěr", words: ["耳朵","耳机"], en: "ear", emoji: "👂" },
+    "口": { py: "kǒu", words: ["口水","开口"], en: "mouth", emoji: "👄" },
+    "心": { py: "xīn", words: ["心里","开心"], en: "heart", emoji: "❤️" },
+    "饭": { py: "fàn", words: ["吃饭","米饭"], en: "rice, meal", emoji: "🍚" },
+    "菜": { py: "cài", words: ["菜","青菜"], en: "vegetable, dish", emoji: "🥬" },
+    "果": { py: "guǒ", words: ["水果","苹果"], en: "fruit", emoji: "🍎" },
+    "米": { py: "mǐ", words: ["大米","玉米"], en: "rice", emoji: "🌾" },
+    "茶": { py: "chá", words: ["喝茶","茶叶"], en: "tea", emoji: "🍵" },
+    "药": { py: "yào", words: ["吃药","药店"], en: "medicine", emoji: "💊" },
+    "医": { py: "yī", words: ["医院","医生"], en: "doctor, medicine", emoji: "🏥" },
+    "钱": { py: "qián", words: ["花钱","有钱"], en: "money", emoji: "💰" },
+    "店": { py: "diàn", words: ["商店","饭店"], en: "shop, store", emoji: "🏪" },
+    "买": { py: "mǎi", words: ["买东西","买菜"], en: "buy", emoji: "" },
+    "卖": { py: "mài", words: ["卖东西","买卖"], en: "sell", emoji: "" },
+    "飞": { py: "fēi", words: ["飞机","飞鸟"], en: "fly", emoji: "✈️" },
+    "机": { py: "jī", words: ["飞机","手机"], en: "machine, phone", emoji: "📱" },
+    "电": { py: "diàn", words: ["电话","电视"], en: "electricity, phone", emoji: "📺" },
+    "视": { py: "shì", words: ["电视","视力"], en: "view, vision", emoji: "" },
+    "话": { py: "huà", words: ["电话","说话"], en: "speech, phone", emoji: "" },
+    "歌": { py: "gē", words: ["唱歌","歌曲"], en: "song", emoji: "🎵" },
+    "唱": { py: "chàng", words: ["唱歌","唱戏"], en: "sing", emoji: "" },
+    "走": { py: "zǒu", words: ["走路","走开"], en: "walk, go", emoji: "🚶" },
+    "跑": { py: "pǎo", words: ["跑步","快跑"], en: "run", emoji: "🏃" },
+    "坐": { py: "zuò", words: ["坐下","坐车"], en: "sit", emoji: "" },
+    "站": { py: "zhàn", words: ["站立","车站"], en: "stand, station", emoji: "" },
+    "看": { py: "kàn", words: ["看见","看书"], en: "look, see, read", emoji: "👀" },
+    "听": { py: "tīng", words: ["听见","听话"], en: "listen, hear", emoji: "👂" },
+    "说": { py: "shuō", words: ["说话","听说"], en: "speak, say", emoji: "" },
+    "想": { py: "xiǎng", words: ["想念","想法"], en: "think, miss", emoji: "" },
+    "知": { py: "zhī", words: ["知道","知识"], en: "know", emoji: "" },
+    "道": { py: "dào", words: ["知道","道路"], en: "road, way, know", emoji: "" },
+    "要": { py: "yào", words: ["不要","需要"], en: "want, need", emoji: "" },
+    "会": { py: "huì", words: ["开会","学会"], en: "can, will, meeting", emoji: "" },
+    "能": { py: "néng", words: ["能力","能够"], en: "can, able", emoji: "" },
+    "高": { py: "gāo", words: ["高兴","高大"], en: "tall, high", emoji: "" },
+    "兴": { py: "xìng", words: ["高兴","兴趣"], en: "happy, interest", emoji: "" },
+    "快": { py: "kuài", words: ["快乐","快跑"], en: "fast, happy", emoji: "" },
+    "乐": { py: "lè", words: ["快乐","音乐"], en: "happy, music", emoji: "" },
+    "长": { py: "cháng", words: ["长大","很长"], en: "long, grow", emoji: "" },
+    "年": { py: "nián", words: ["今年","过年"], en: "year", emoji: "📅" },
+    "今": { py: "jīn", words: ["今天","今年"], en: "today, now", emoji: "" },
+    "明": { py: "míng", words: ["明天","明白"], en: "tomorrow, bright", emoji: "" },
+    "后": { py: "hòu", words: ["以后","后面"], en: "after, behind", emoji: "" },
+    "前": { py: "qián", words: ["以前","前面"], en: "before, front", emoji: "" },
+    "左": { py: "zuǒ", words: ["左边","左手"], en: "left", emoji: "⬅️" },
+    "右": { py: "yòu", words: ["右边","右手"], en: "right", emoji: "➡️" },
+    "男": { py: "nán", words: ["男人","男生"], en: "male, man", emoji: "👨" },
+    "女": { py: "nǚ", words: ["女人","女生"], en: "female, woman", emoji: "👩" },
+    "老": { py: "lǎo", words: ["老人","老师"], en: "old", emoji: "👴" },
+    "新": { py: "xīn", words: ["新年","新闻"], en: "new", emoji: "" },
+    "多": { py: "duō", words: ["很多","多少"], en: "many, much", emoji: "" },
+    "少": { py: "shǎo", words: ["很少","多少"], en: "few, little", emoji: "" },
+    "红": { py: "hóng", words: ["红色","红花"], en: "red", emoji: "🔴" },
+    "苹": { py: "píng", words: ["苹果"], en: "apple (in 苹果)", emoji: "🍎" },
+    "果": { py: "guǒ", words: ["苹果","水果"], en: "fruit", emoji: "🍎" },
+    "香": { py: "xiāng", words: ["香蕉","香水"], en: "fragrant, banana", emoji: "🍌" },
+    "蕉": { py: "jiāo", words: ["香蕉"], en: "banana (in 香蕉)", emoji: "🍌" },
+    "西": { py: "xī", words: ["西瓜","东西"], en: "west, watermelon", emoji: "🍉" },
+    "瓜": { py: "guā", words: ["西瓜","南瓜"], en: "melon", emoji: "🍈" },
+    "数": { py: "shù", words: ["数学","数字"], en: "number, math", emoji: "" },
+    "字": { py: "zì", words: ["写字","汉字"], en: "character", emoji: "🔤" },
+    "笔": { py: "bǐ", words: ["铅笔","笔"], en: "pen, pencil", emoji: "✏️" },
+    "纸": { py: "zhǐ", words: ["纸","白纸"], en: "paper", emoji: "📄" },
+    "桌": { py: "zhuō", words: ["桌子","书桌"], en: "table, desk", emoji: "🪑" },
+    "椅": { py: "yǐ", words: ["椅子","桌椅"], en: "chair", emoji: "🪑" },
+    "床": { py: "chuáng", words: ["床上","起床"], en: "bed", emoji: "🛏️" },
+    "衣": { py: "yī", words: ["衣服","上衣"], en: "clothes", emoji: "👕" },
+    "服": { py: "fú", words: ["衣服","服务"], en: "clothes, serve", emoji: "" },
+    "鞋": { py: "xié", words: ["鞋子","穿鞋"], en: "shoes", emoji: "👟" },
+    "帽": { py: "mào", words: ["帽子","戴帽"], en: "hat", emoji: "🧢" },
+    "树": { py: "shù", words: ["大树","树林"], en: "tree", emoji: "🌳" },
+    "草": { py: "cǎo", words: ["草地","小草"], en: "grass", emoji: "🌿" },
+    "河": { py: "hé", words: ["河水","小河"], en: "river", emoji: "🏞️" },
+    "海": { py: "hǎi", words: ["大海","海水"], en: "sea, ocean", emoji: "🌊" },
+    "船": { py: "chuán", words: ["小船","坐船"], en: "boat, ship", emoji: "⛵" },
+    "桥": { py: "qiáo", words: ["大桥","过桥"], en: "bridge", emoji: "🌉" },
+};
+
+// 常见词语英文对照
+const WORD_EN = {
+    "苹果": { en: "apple", emoji: "🍎" },
+    "香蕉": { en: "banana", emoji: "🍌" },
+    "西瓜": { en: "watermelon", emoji: "🍉" },
+    "葡萄": { en: "grape", emoji: "🍇" },
+    "橘子": { en: "orange", emoji: "🍊" },
+    "草莓": { en: "strawberry", emoji: "🍓" },
+    "桃子": { en: "peach", emoji: "🍑" },
+    "汽车": { en: "car", emoji: "🚗" },
+    "飞机": { en: "airplane", emoji: "✈️" },
+    "火车": { en: "train", emoji: "🚂" },
+    "自行车": { en: "bicycle", emoji: "🚲" },
+    "公共汽车": { en: "bus", emoji: "🚌" },
+    "电话": { en: "phone", emoji: "📱" },
+    "电视": { en: "television", emoji: "📺" },
+    "电脑": { en: "computer", emoji: "💻" },
+    "冰箱": { en: "refrigerator", emoji: "🧊" },
+    "洗衣机": { en: "washing machine", emoji: "🫧" },
+    "空调": { en: "air conditioner", emoji: "❄️" },
+    "爸爸": { en: "father, dad", emoji: "👨" },
+    "妈妈": { en: "mother, mom", emoji: "👩" },
+    "爷爷": { en: "grandfather", emoji: "👴" },
+    "奶奶": { en: "grandmother", emoji: "👵" },
+    "哥哥": { en: "older brother", emoji: "👦" },
+    "姐姐": { en: "older sister", emoji: "👧" },
+    "弟弟": { en: "younger brother", emoji: "👦" },
+    "妹妹": { en: "younger sister", emoji: "👧" },
+    "朋友": { en: "friend", emoji: "🤝" },
+    "老师": { en: "teacher", emoji: "👨‍🏫" },
+    "医生": { en: "doctor", emoji: "👨‍⚕️" },
+    "学生": { en: "student", emoji: "🧑‍🎓" },
+    "红色": { en: "red", emoji: "🔴" },
+    "蓝色": { en: "blue", emoji: "🔵" },
+    "绿色": { en: "green", emoji: "🟢" },
+    "黄色": { en: "yellow", emoji: "🟡" },
+    "白色": { en: "white", emoji: "⚪" },
+    "黑色": { en: "black", emoji: "⚫" },
+    "吃饭": { en: "eat a meal", emoji: "🍚" },
+    "喝水": { en: "drink water", emoji: "💧" },
+    "睡觉": { en: "sleep", emoji: "😴" },
+    "起床": { en: "get up", emoji: "🌅" },
+    "上班": { en: "go to work", emoji: "💼" },
+    "回家": { en: "go home", emoji: "🏠" },
+    "看书": { en: "read a book", emoji: "📖" },
+    "写字": { en: "write characters", emoji: "✍️" },
+    "唱歌": { en: "sing", emoji: "🎵" },
+    "跳舞": { en: "dance", emoji: "💃" },
+    "跑步": { en: "run, jog", emoji: "🏃" },
+    "走路": { en: "walk", emoji: "🚶" },
+    "今天": { en: "today", emoji: "📅" },
+    "明天": { en: "tomorrow", emoji: "📅" },
+    "昨天": { en: "yesterday", emoji: "📅" },
+    "早上": { en: "morning", emoji: "🌅" },
+    "中午": { en: "noon", emoji: "☀️" },
+    "晚上": { en: "evening", emoji: "🌙" },
+    "高兴": { en: "happy", emoji: "😊" },
+    "难过": { en: "sad", emoji: "😢" },
+    "生气": { en: "angry", emoji: "😠" },
+    "漂亮": { en: "beautiful", emoji: "😍" },
+    "好看": { en: "good-looking", emoji: "😊" },
+    "好吃": { en: "delicious", emoji: "😋" },
+    "谢谢": { en: "thank you", emoji: "🙏" },
+    "你好": { en: "hello", emoji: "👋" },
+    "再见": { en: "goodbye", emoji: "👋" },
+    "对不起": { en: "sorry", emoji: "😔" },
+    "没有": { en: "don't have", emoji: "" },
+    "什么": { en: "what", emoji: "" },
+    "怎么": { en: "how", emoji: "" },
+    "哪里": { en: "where", emoji: "" },
+    "为什么": { en: "why", emoji: "" },
+};
+
+// ============================================================
+//  补充字典（第二部分：新增300+字）
+// ============================================================
+const PINYIN_DICT_EXT = {
+    // 身体
+    "睡": { py: "shuì", words: ["睡觉","睡着"], en: "sleep", emoji: "😴" },
+    "脑": { py: "nǎo", words: ["脑子","大脑"], en: "brain", emoji: "🧠" },
+    "脸": { py: "liǎn", words: ["洗脸","脸红"], en: "face", emoji: "" },
+    "嘴": { py: "zuǐ", words: ["嘴巴","张嘴"], en: "mouth", emoji: "👄" },
+    "牙": { py: "yá", words: ["牙齿","刷牙"], en: "tooth", emoji: "🦷" },
+    "脖": { py: "bó", words: ["脖子","围脖"], en: "neck", emoji: "" },
+    "肩": { py: "jiān", words: ["肩膀","肩上"], en: "shoulder", emoji: "" },
+    "背": { py: "bèi", words: ["背后","书包背"], en: "back", emoji: "" },
+    "胸": { py: "xiōng", words: ["胸口","挺胸"], en: "chest", emoji: "" },
+    "肚": { py: "dù", words: ["肚子","肚皮"], en: "belly", emoji: "" },
+    "腿": { py: "tuǐ", words: ["大腿","跑步腿"], en: "leg", emoji: "" },
+    "脚": { py: "jiǎo", words: ["脚","脚下"], en: "foot", emoji: "🦶" },
+    "膝": { py: "xī", words: ["膝盖","护膝"], en: "knee", emoji: "" },
+    "血": { py: "xuè", words: ["出血","血液"], en: "blood", emoji: "🩸" },
+    "皮": { py: "pí", words: ["皮肤","果皮"], en: "skin", emoji: "" },
+    "发": { py: "fà", words: ["头发","理发"], en: "hair", emoji: "" },
+    // 动作
+    "尽": { py: "jìn", words: ["尽头","尽力"], en: "exhaust, end", emoji: "" },
+    "拿": { py: "ná", words: ["拿来","拿走"], en: "take, hold", emoji: "" },
+    "放": { py: "fàng", words: ["放下","放心"], en: "put, release", emoji: "" },
+    "提": { py: "tí", words: ["提到","提醒"], en: "mention, carry", emoji: "" },
+    "拉": { py: "lā", words: ["拉开","拉手"], en: "pull", emoji: "" },
+    "推": { py: "tuī", words: ["推开","推荐"], en: "push", emoji: "" },
+    "打": { py: "dǎ", words: ["打电话","打开"], en: "hit, call", emoji: "" },
+    "踢": { py: "tī", words: ["踢球","踢开"], en: "kick", emoji: "" },
+    "抱": { py: "bào", words: ["拥抱","抱着"], en: "hug, hold", emoji: "🤗" },
+    "接": { py: "jiē", words: ["接到","接受"], en: "receive, accept", emoji: "" },
+    "扔": { py: "rēng", words: ["扔掉","扔出去"], en: "throw", emoji: "" },
+    "抓": { py: "zhuā", words: ["抓住","抓紧"], en: "grab, catch", emoji: "" },
+    "摸": { py: "mō", words: ["摸到","抚摸"], en: "touch, feel", emoji: "" },
+    "擦": { py: "cā", words: ["擦掉","擦桌子"], en: "wipe, rub", emoji: "" },
+    "挡": { py: "dǎng", words: ["挡住","遮挡"], en: "block", emoji: "" },
+    "挑": { py: "tiāo", words: ["挑选","挑水"], en: "pick, carry", emoji: "" },
+    "抬": { py: "tái", words: ["抬头","抬起来"], en: "lift, raise", emoji: "" },
+    "按": { py: "àn", words: ["按下","按摩"], en: "press", emoji: "" },
+    "挖": { py: "wā", words: ["挖土","挖掘"], en: "dig", emoji: "" },
+    "砍": { py: "kǎn", words: ["砍树","砍价"], en: "cut, chop", emoji: "" },
+    "捡": { py: "jiǎn", words: ["捡到","捡起来"], en: "pick up", emoji: "" },
+    "挤": { py: "jǐ", words: ["拥挤","挤奶"], en: "squeeze, crowd", emoji: "" },
+    "插": { py: "chā", words: ["插上","插座"], en: "insert, plug", emoji: "" },
+    "拔": { py: "bá", words: ["拔出来","拔牙"], en: "pull out", emoji: "" },
+    "摇": { py: "yáo", words: ["摇头","摇晃"], en: "shake", emoji: "" },
+    "摔": { py: "shuāi", words: ["摔倒","摔碎"], en: "fall,摔", emoji: "" },
+    "躲": { py: "duǒ", words: ["躲开","躲避"], en: "hide, dodge", emoji: "" },
+    "追": { py: "zhuī", words: ["追赶","追求"], en: "chase", emoji: "" },
+    "跳": { py: "tiào", words: ["跳舞","跳绳"], en: "jump", emoji: "" },
+    "踩": { py: "cǎi", words: ["踩到","踩踏"], en: "step on", emoji: "" },
+    "蹲": { py: "dūn", words: ["蹲下","蹲着"], en: "squat", emoji: "" },
+    "弯": { py: "wān", words: ["弯腰","弯曲"], en: "bend", emoji: "" },
+    "伸": { py: "shēn", words: ["伸手","伸懒腰"], en: "stretch", emoji: "" },
+    "碰": { py: "pèng", words: ["碰到","碰见"], en: "touch, bump", emoji: "" },
+    "靠": { py: "kào", words: ["靠着","可靠"], en: "lean on, rely", emoji: "" },
+    "端": { py: "duān", words: ["端水","端正"], en: "carry, hold", emoji: "" },
+    "尝": { py: "cháng", words: ["尝尝","品尝"], en: "taste", emoji: "" },
+    "吞": { py: "tūn", words: ["吞下去","吞咽"], en: "swallow", emoji: "" },
+    "咬": { py: "yǎo", words: ["咬一口","咬住"], en: "bite", emoji: "" },
+    "咳": { py: "ké", words: ["咳嗽","咳一声"], en: "cough", emoji: "" },
+    "叹": { py: "tàn", words: ["叹气","感叹"], en: "sigh", emoji: "" },
+    "喊": { py: "hǎn", words: ["喊叫","大喊"], en: "shout", emoji: "" },
+    "哭": { py: "kū", words: ["哭了","哭泣"], en: "cry", emoji: "😢" },
+    "笑": { py: "xiào", words: ["笑了","微笑"], en: "laugh, smile", emoji: "😄" },
+    "怕": { py: "pà", words: ["害怕","可怕"], en: "afraid", emoji: "😨" },
+    "爱": { py: "ài", words: ["爱人","可爱"], en: "love", emoji: "❤️" },
+    "恨": { py: "hèn", words: ["恨","怨恨"], en: "hate", emoji: "" },
+    "帮": { py: "bāng", words: ["帮忙","帮助"], en: "help", emoji: "" },
+    "教": { py: "jiāo", words: ["教会","教学"], en: "teach", emoji: "" },
+    "找": { py: "zhǎo", words: ["找到","寻找"], en: "find, look for", emoji: "" },
+    "等": { py: "děng", words: ["等待","等等"], en: "wait", emoji: "" },
+    "让": { py: "ràng", words: ["让开","让步"], en: "let, allow", emoji: "" },
+    "陪": { py: "péi", words: ["陪伴","陪同"], en: "accompany", emoji: "" },
+    "送": { py: "sòng", words: ["送给","送行"], en: "send, give", emoji: "" },
+    "借": { py: "jiè", words: ["借给","借钱"], en: "lend, borrow", emoji: "" },
+    "还": { py: "hái", words: ["还有","还是"], en: "still, return", emoji: "" },
+    "选": { py: "xuǎn", words: ["选择","挑选"], en: "choose", emoji: "" },
+    "答": { py: "dá", words: ["回答","答案"], en: "answer", emoji: "" },
+    "问": { py: "wèn", words: ["问题","问答"], en: "ask", emoji: "" },
+    "记": { py: "jì", words: ["记住","忘记"], en: "remember", emoji: "" },
+    "忘": { py: "wàng", words: ["忘记","忘掉"], en: "forget", emoji: "" },
+    "梦": { py: "mèng", words: ["做梦","梦想"], en: "dream", emoji: "💭" },
+    "醒": { py: "xǐng", words: ["醒来","清醒"], en: "wake up", emoji: "" },
+    // 时间
+    "秒": { py: "miǎo", words: ["秒钟","一秒"], en: "second", emoji: "" },
+    "分": { py: "fēn", words: ["分钟","分开"], en: "minute, divide", emoji: "" },
+    "钟": { py: "zhōng", words: ["钟","分钟"], en: "clock, bell", emoji: "🕐" },
+    "周": { py: "zhōu", words: ["周末","一周"], en: "week", emoji: "📅" },
+    "春": { py: "chūn", words: ["春天","春节"], en: "spring", emoji: "🌸" },
+    "夏": { py: "xià", words: ["夏天","夏季"], en: "summer", emoji: "☀️" },
+    "秋": { py: "qiū", words: ["秋天","秋季"], en: "autumn", emoji: "🍂" },
+    "冬": { py: "dōng", words: ["冬天","冬季"], en: "winter", emoji: "❄️" },
+    "昨": { py: "zuó", words: ["昨天","昨晚"], en: "yesterday", emoji: "" },
+    "每": { py: "měi", words: ["每天","每个"], en: "every", emoji: "" },
+    "刚": { py: "gāng", words: ["刚才","刚刚"], en: "just now", emoji: "" },
+    "永": { py: "yǒng", words: ["永远","永久"], en: "forever", emoji: "" },
+    "久": { py: "jiǔ", words: ["很久","多久"], en: "long time", emoji: "" },
+    "忙": { py: "máng", words: ["很忙","忙碌"], en: "busy", emoji: "" },
+    "闲": { py: "xián", words: ["空闲","休闲"], en: "idle, free", emoji: "" },
+    "急": { py: "jí", words: ["着急","急忙"], en: "anxious, urgent", emoji: "" },
+    "慢": { py: "màn", words: ["慢慢","快慢"], en: "slow", emoji: "" },
+    "远": { py: "yuǎn", words: ["很远","远方"], en: "far", emoji: "" },
+    "近": { py: "jìn", words: ["最近","近处"], en: "near", emoji: "" },
+    "深": { py: "shēn", words: ["很深","深入"], en: "deep", emoji: "" },
+    "浅": { py: "qiǎn", words: ["很浅","浅色"], en: "shallow, light", emoji: "" },
+    "宽": { py: "kuān", words: ["很宽","宽阔"], en: "wide", emoji: "" },
+    "窄": { py: "zhǎi", words: ["很窄","狭窄"], en: "narrow", emoji: "" },
+    "胖": { py: "pàng", words: ["很胖","胖乎乎"], en: "fat", emoji: "" },
+    "瘦": { py: "shòu", words: ["很瘦","瘦小"], en: "thin", emoji: "" },
+    "干": { py: "gān", words: ["干净","干杯"], en: "dry, clean", emoji: "" },
+    "湿": { py: "shī", words: ["湿了","潮湿"], en: "wet", emoji: "" },
+    "破": { py: "pò", words: ["打破","破了"], en: "broken", emoji: "" },
+    "脏": { py: "zāng", words: ["很脏","弄脏"], en: "dirty", emoji: "" },
+    "净": { py: "jìng", words: ["干净","纯净"], en: "clean", emoji: "" },
+    "错": { py: "cuò", words: ["错误","对不起"], en: "wrong", emoji: "" },
+    "对": { py: "duì", words: ["对的","对不对"], en: "correct, right", emoji: "" },
+    "真": { py: "zhēn", words: ["真的","认真"], en: "real, true", emoji: "" },
+    "假": { py: "jiǎ", words: ["真假","放假"], en: "fake, holiday", emoji: "" },
+    "满": { py: "mǎn", words: ["满了","满意"], en: "full", emoji: "" },
+    "空": { py: "kōng", words: ["空气","天空"], en: "empty, sky", emoji: "" },
+    "硬": { py: "yìng", words: ["很硬","坚硬"], en: "hard", emoji: "" },
+    "软": { py: "ruǎn", words: ["很软","柔软"], en: "soft", emoji: "" },
+    "轻": { py: "qīng", words: ["很轻","轻松"], en: "light (weight)", emoji: "" },
+    "重": { py: "zhòng", words: ["很重","重要"], en: "heavy, important", emoji: "" },
+    // 自然/物品
+    "洞": { py: "dòng", words: ["山洞","洞里"], en: "hole, cave", emoji: "" },
+    "石": { py: "shí", words: ["石头","宝石"], en: "stone", emoji: "🪨" },
+    "沙": { py: "shā", words: ["沙子","沙发"], en: "sand", emoji: "" },
+    "泥": { py: "ní", words: ["泥土","水泥"], en: "mud", emoji: "" },
+    "云": { py: "yún", words: ["白云","乌云"], en: "cloud", emoji: "☁️" },
+    "雾": { py: "wù", words: ["大雾","雾霾"], en: "fog", emoji: "🌫️" },
+    "冰": { py: "bīng", words: ["冰水","结冰"], en: "ice", emoji: "🧊" },
+    "霜": { py: "shuāng", words: ["霜","下霜"], en: "frost", emoji: "" },
+    "路": { py: "lù", words: ["马路","走路"], en: "road", emoji: "🛣️" },
+    "墙": { py: "qiáng", words: ["墙壁","围墙"], en: "wall", emoji: "" },
+    "窗": { py: "chuāng", words: ["窗户","窗帘"], en: "window", emoji: "🪟" },
+    "灯": { py: "dēng", words: ["电灯","开灯"], en: "light, lamp", emoji: "💡" },
+    "锁": { py: "suǒ", words: ["锁门","开锁"], en: "lock", emoji: "🔒" },
+    "钥匙": { py: "yàoshi", words: ["钥匙"], en: "key", emoji: "🔑" },
+    "碗": { py: "wǎn", words: ["饭碗","碗里"], en: "bowl", emoji: "🥣" },
+    "筷": { py: "kuài", words: ["筷子"], en: "chopsticks", emoji: "🥢" },
+    "盘": { py: "pán", words: ["盘子","一盘"], en: "plate", emoji: "🍽️" },
+    "杯": { py: "bēi", words: ["杯子","一杯"], en: "cup", emoji: "🥤" },
+    "瓶": { py: "píng", words: ["瓶子","一瓶"], en: "bottle", emoji: "🍾" },
+    "壶": { py: "hú", words: ["水壶","茶壶"], en: "pot, kettle", emoji: "" },
+    "刀": { py: "dāo", words: ["小刀","菜刀"], en: "knife", emoji: "🔪" },
+    "针": { py: "zhēn", words: ["针","打针"], en: "needle", emoji: "📌" },
+    "线": { py: "xiàn", words: ["线","毛线"], en: "line, thread", emoji: "" },
+    "绳": { py: "shéng", words: ["绳子","跳绳"], en: "rope", emoji: "" },
+    "布": { py: "bù", words: ["布","花布"], en: "cloth", emoji: "" },
+    // 方向/位置
+    "边": { py: "biān", words: ["旁边","那边"], en: "side", emoji: "" },
+    "底": { py: "dǐ", words: ["底下","底部"], en: "bottom", emoji: "" },
+    "顶": { py: "dǐng", words: ["头顶","屋顶"], en: "top", emoji: "" },
+    "角": { py: "jiǎo", words: ["角落","角度"], en: "corner, angle", emoji: "" },
+    "层": { py: "céng", words: ["一层","层次"], en: "layer, floor", emoji: "" },
+    "排": { py: "pái", words: ["一排","排队"], en: "row, queue", emoji: "" },
+    "堆": { py: "duī", words: ["一堆","堆放"], en: "pile, heap", emoji: "" },
+    "片": { py: "piàn", words: ["一片","照片"], en: "piece, slice", emoji: "" },
+    "块": { py: "kuài", words: ["一块","石块"], en: "piece, chunk", emoji: "" },
+    "串": { py: "chuàn", words: ["一串","串起来"], en: "string, bunch", emoji: "" },
+    "双": { py: "shuāng", words: ["一双","双手"], en: "pair, double", emoji: "" },
+    "群": { py: "qún", words: ["一群","人群"], en: "group", emoji: "" },
+    // 社会/生活
+    "村": { py: "cūn", words: ["村子","农村"], en: "village", emoji: "🏘️" },
+    "城": { py: "chéng", words: ["城市","长城"], en: "city", emoji: "🏙️" },
+    "国": { py: "guó", words: ["中国","国家"], en: "country, nation", emoji: "🇨🇳" },
+    "市": { py: "shì", words: ["市场","超市"], en: "market, city", emoji: "" },
+    "街": { py: "jiē", words: ["街上","街道"], en: "street", emoji: "" },
+    "厂": { py: "chǎng", words: ["工厂","厂里"], en: "factory", emoji: "🏭" },
+    "场": { py: "chǎng", words: ["操场","广场"], en: "field, square", emoji: "" },
+    "站": { py: "zhàn", words: ["车站","加油站"], en: "station", emoji: "" },
+    "票": { py: "piào", words: ["车票","电影票","发票"], en: "ticket", emoji: "🎫" },
+    "漂": { py: "piào", words: ["漂亮","漂白"], en: "beautiful,漂", emoji: "" },
+    "信": { py: "xìn", words: ["写信","相信"], en: "letter, believe", emoji: "✉️" },
+    "包": { py: "bāo", words: ["书包","包子"], en: "bag, bun", emoji: "🎒" },
+    "袋": { py: "dài", words: ["袋子","口袋"], en: "bag, pocket", emoji: "" },
+    "盒": { py: "hé", words: ["盒子","饭盒"], en: "box", emoji: "📦" },
+    // 数量
+    "百": { py: "bǎi", words: ["一百","百"], en: "hundred", emoji: "" },
+    "千": { py: "qiān", words: ["一千","千万"], en: "thousand", emoji: "" },
+    "万": { py: "wàn", words: ["一万","万"], en: "ten thousand", emoji: "" },
+    "两": { py: "liǎng", words: ["两个","两天"], en: "two (measure)", emoji: "" },
+    "几": { py: "jǐ", words: ["几个","几天"], en: "how many, several", emoji: "" },
+    "半": { py: "bàn", words: ["一半","半天"], en: "half", emoji: "" },
+    // 其他常用字
+    "完": { py: "wán", words: ["完了","完成"], en: "finish", emoji: "" },
+    "错": { py: "cuò", words: ["错误","错了"], en: "wrong, mistake", emoji: "" },
+    "懂": { py: "dǒng", words: ["懂得","听懂"], en: "understand", emoji: "" },
+    "试": { py: "shì", words: ["试试","考试"], en: "try, test", emoji: "" },
+    "赢": { py: "yíng", words: ["赢了","赢家"], en: "win", emoji: "🏆" },
+    "输": { py: "shū", words: ["输了","输入"], en: "lose, input", emoji: "" },
+    "怕": { py: "pà", words: ["害怕","可怕"], en: "afraid", emoji: "😨" },
+    "恨": { py: "hèn", words: ["恨","怨恨"], en: "hate", emoji: "" },
+    "愿": { py: "yuàn", words: ["愿意","许愿"], en: "willing, wish", emoji: "" },
+    "准": { py: "zhǔn", words: ["准备","准确"], en: "prepare, accurate", emoji: "" },
+    "备": { py: "bèi", words: ["准备","备用"], en: "prepare, backup", emoji: "" },
+    "够": { py: "gòu", words: ["不够","足够"], en: "enough", emoji: "" },
+    "差": { py: "chà", words: ["很差","差一点"], en: "poor, almost", emoji: "" },
+    "久": { py: "jiǔ", words: ["很久","好久"], en: "long time", emoji: "" },
+    "越": { py: "yuè", words: ["越来越","超越"], en: "more and more", emoji: "" },
+    "最": { py: "zuì", words: ["最好","最大"], en: "most", emoji: "" },
+    // 最后补充：高频常用字
+    "金": { py: "jīn", words: ["金色","黄金","金钱"], en: "gold", emoji: "🥇" },
+    "强": { py: "qiáng", words: ["强大","坚强","勉强","强壮"], en: "strong", emoji: "" },
+    "您": { py: "nín", words: ["您好","您"], en: "you (polite)", emoji: "🙏" },
+    "宁": { py: "níng", words: ["安宁","宁静","宁愿","宁可"], en: "peaceful, rather", emoji: "" },
+    "拧": { py: "níng", words: ["拧开","拧紧","拧"], en: "twist, wring", emoji: "" },
+    "愿": { py: "yuàn", words: ["愿意","愿望","宁愿","许愿"], en: "willing, wish", emoji: "" },
+    "哈": { py: "hā", words: ["哈哈","哈气"], en: "ha (laugh)", emoji: "" },
+    "嘞": { py: "lei", words: ["好嘞","是嘞"], en: "(dialect particle)", emoji: "" },
+    "哪": { py: "nǎ", words: ["哪个","哪里","哪些"], en: "which, where", emoji: "" },
+    "条": { py: "tiáo", words: ["条件","一条","面条"], en: "strip, condition", emoji: "" },
+    "气": { py: "qì", words: ["天气","空气","生气"], en: "air, gas, anger", emoji: "" },
+    "张": { py: "zhāng", words: ["一张","张开","紧张"], en: "zhang (surname), open", emoji: "" },
+    "王": { py: "wáng", words: ["王子","国王","大王"], en: "king, wang", emoji: "👑" },
+    "李": { py: "lǐ", words: ["行李","李子"], en: "li (surname), plum", emoji: "" },
+    "赵": { py: "zhào", words: ["赵","赵钱孙李"], en: "zhao (surname)", emoji: "" },
+    "刘": { py: "liú", words: ["刘海","刘"], en: "liu (surname)", emoji: "" },
+    "陈": { py: "chén", words: ["陈","陈列"], en: "chen (surname), display", emoji: "" },
+    "杨": { py: "yáng", words: ["杨树","杨柳"], en: "poplar, yang", emoji: "" },
+    "黄": { py: "huáng", words: ["黄色","黄金","黄瓜"], en: "yellow", emoji: "🟡" },
+    "周": { py: "zhōu", words: ["周末","一周"], en: "week, zhou", emoji: "📅" },
+    "吴": { py: "wú", words: ["吴","吴国"], en: "wu (surname)", emoji: "" },
+    "孙": { py: "sūn", words: ["孙子","孙悟空"], en: "grandchild, sun", emoji: "" },
+    "胡": { py: "hú", words: ["胡子","胡说"], en: "beard, reckless", emoji: "" },
+    "朱": { py: "zhū", words: ["朱红","朱砂"], en: "vermillion, zhu", emoji: "" },
+    "高": { py: "gāo", words: ["高兴","高大","高山"], en: "tall, high", emoji: "" },
+    "林": { py: "lín", words: ["树林","森林"], en: "forest, lin", emoji: "🌲" },
+    "何": { py: "hé", words: ["何时","任何","如何"], en: "what, he", emoji: "" },
+    "郭": { py: "guō", words: ["城郭","郭"], en: "guo (surname)", emoji: "" },
+    "马": { py: "mǎ", words: ["小马","白马","马路"], en: "horse", emoji: "🐴" },
+    "麻": { py: "má", words: ["麻烦","芝麻","麻辣"], en: "hemp, numb, troublesome", emoji: "" },
+    "骂": { py: "mà", words: ["骂人","骂","责骂"], en: "scold, curse", emoji: "" },
+    "罗": { py: "luó", words: ["罗列","罗"], en: "luo (surname), collect", emoji: "" },
+    "梁": { py: "liáng", words: ["桥梁","房梁"], en: "bridge, beam", emoji: "" },
+    "宋": { py: "sòng", words: ["宋朝","宋"], en: "song dynasty", emoji: "" },
+    "郑": { py: "zhèng", words: ["郑重","郑"], en: "zheng (surname)", emoji: "" },
+    "谢": { py: "xiè", words: ["谢谢","感谢"], en: "thank, xie", emoji: "🙏" },
+    "韩": { py: "hán", words: ["韩国","韩"], en: "han (surname/Korea)", emoji: "" },
+    "唐": { py: "táng", words: ["唐朝","荒唐"], en: "tang dynasty", emoji: "" },
+    "冯": { py: "féng", words: ["冯","姓冯"], en: "feng (surname)", emoji: "" },
+    "于": { py: "yú", words: ["关于","对于","于是"], en: "in, at, about", emoji: "" },
+    "董": { py: "dǒng", words: ["董事","懂"], en: "dong (surname), manage", emoji: "" },
+    "萧": { py: "xiāo", words: ["萧条","萧"], en: "desolate, xiao", emoji: "" },
+    "程": { py: "chéng", words: ["工程","程序","路程"], en: "journey, cheng", emoji: "" },
+    "蔡": { py: "cài", words: ["蔡","蔡国"], en: "cai (surname)", emoji: "" },
+    "彭": { py: "péng", words: ["彭","彭大"], en: "peng (surname)", emoji: "" },
+    "潘": { py: "pān", words: ["潘","潘金莲"], en: "pan (surname)", emoji: "" },
+    // 标点符号后面也要跳过
+    "第": { py: "dì", words: ["第一","第二","第几"], en: "ordinal prefix", emoji: "" },
+    "号": { py: "hào", words: ["号码","几号","口号"], en: "number, date", emoji: "" },
+    "种": { py: "zhǒng", words: ["一种","各种","种子"], en: "kind, seed", emoji: "" },
+    "样": { py: "yàng", words: ["样子","这样","怎样"], en: "appearance, way", emoji: "" },
+    "些": { py: "xiē", words: ["一些","这些","那些"], en: "some", emoji: "" },
+    "位": { py: "wèi", words: ["一位","各位","位置"], en: "seat, (measure for people)", emoji: "" },
+    "件": { py: "jiàn", words: ["一件","条件","事件"], en: "piece, matter", emoji: "" },
+    "次": { py: "cì", words: ["一次","下次","次数"], en: "time, occasion", emoji: "" },
+    "遍": { py: "biàn", words: ["一遍","走遍"], en: "once through, everywhere", emoji: "" },
+    "趟": { py: "tàng", words: ["一趟","走趟"], en: "(trip measure)", emoji: "" },
+    "回": { py: "huí", words: ["回来","回去","回答"], en: "return, time", emoji: "" },
+    "场": { py: "chǎng", words: ["一场","操场","广场"], en: "field, scene", emoji: "" },
+    "阵": { py: "zhèn", words: ["一阵","阵地"], en: "burst, front", emoji: "" },
+    "把": { py: "bǎ", words: ["一把","把握","把手"], en: "hold, handle", emoji: "" },
+    "根": { py: "gēn", words: ["一根","根本","根据"], en: "root, basis", emoji: "" },
+    "颗": { py: "kē", words: ["一颗","颗粒"], en: "(small round measure)", emoji: "" },
+    "座": { py: "zuò", words: ["一座","座位","星座"], en: "seat, (large measure)", emoji: "" },
+    "架": { py: "jià", words: ["一架","打架","架子"], en: "frame, shelf", emoji: "" },
+    "辆": { py: "liàng", words: ["一辆","车辆"], en: "(vehicle measure)", emoji: "" },
+    "艘": { py: "sōu", words: ["一艘"], en: "(ship measure)", emoji: "" },
+    "头": { py: "tóu", words: ["头发","头上","一头"], en: "head", emoji: "" },
+    "只": { py: "zhī", words: ["一只","只是","只有"], en: "only, (animal measure)", emoji: "" },
+    "群": { py: "qún", words: ["一群","人群","群众"], en: "group, crowd", emoji: "" },
+    "堆": { py: "duī", words: ["一堆","堆放","土堆"], en: "pile, heap", emoji: "" },
+    "束": { py: "shù", words: ["一束","结束","约束"], en: "bundle, beam", emoji: "" },
+    "串": { py: "chuàn", words: ["一串","串起来"], en: "string, bunch", emoji: "" },
+    "打": { py: "dǎ", words: ["打电话","打针","打球"], en: "hit, make, play", emoji: "" },
+    "开": { py: "kāi", words: ["开门","开心","开会"], en: "open, start", emoji: "" },
+    "关": { py: "guān", words: ["关门","关心","关于"], en: "close, care, about", emoji: "" },
+    "点": { py: "diǎn", words: ["一点","点头","点心"], en: "dot, point, order", emoji: "" },
+    "面": { py: "miàn", words: ["面条","上面","前面"], en: "face, surface, noodle", emoji: "" },
+    "身": { py: "shēn", words: ["身体","身上","一身"], en: "body", emoji: "" },
+    "年": { py: "nián", words: ["今年","去年","过年"], en: "year", emoji: "📅" },
+    "岁": { py: "suì", words: ["几岁","岁数","万岁"], en: "years old", emoji: "" },
+    "块": { py: "kuài", words: ["一块","石块","块钱"], en: "piece, yuan", emoji: "" },
+    "毛": { py: "máo", words: ["毛","毛笔","毛衣"], en: "hair, wool, 10 cents", emoji: "" },
+    "分": { py: "fēn", words: ["分钟","分开","十分"], en: "minute, divide, cent", emoji: "" },
+    "角": { py: "jiǎo", words: ["一角","角落","角度"], en: "corner, angle, 10 cents", emoji: "" },
+    "两": { py: "liǎng", words: ["两个","两天","两边"], en: "two (for measures)", emoji: "" },
+    "双": { py: "shuāng", words: ["一双","双手","双方"], en: "pair, double", emoji: "" },
+    "对": { py: "duì", words: ["一对","对的","不对"], en: "pair, correct, towards", emoji: "" },
+    "间": { py: "jiān", words: ["中间","房间","时间"], en: "between, room", emoji: "" },
+    "旁": { py: "páng", words: ["旁边","路旁","旁人"], en: "side, other", emoji: "" },
+    "里": { py: "lǐ", words: ["里面","这里","那里"], en: "inside, li (unit)", emoji: "" },
+    "外": { py: "wài", words: ["外面","外国","外出"], en: "outside, foreign", emoji: "" },
+    "内": { py: "nèi", words: ["内部","国内","内容"], en: "inside, within", emoji: "" },
+    "南": { py: "nán", words: ["南方","南边","南面"], en: "south", emoji: "🧭" },
+    "北": { py: "běi", words: ["北方","北边","北京"], en: "north", emoji: "🧭" },
+    "东": { py: "dōng", words: ["东方","东边","东西"], en: "east", emoji: "🧭" },
+    "西": { py: "xī", words: ["西方","西边","西瓜"], en: "west", emoji: "🧭" },
+    "动": { py: "dòng", words: ["运动","活动","动力"], en: "move, action", emoji: "" },
+    "静": { py: "jìng", words: ["安静","平静","静静"], en: "quiet, still", emoji: "" },
+    "安": { py: "ān", words: ["安全","平安","安静"], en: "peace, safe", emoji: "" },
+    "全": { py: "quán", words: ["全部","完全","全国"], en: "all, complete", emoji: "" },
+    "半": { py: "bàn", words: ["一半","半天","半夜"], en: "half", emoji: "" },
+    "整": { py: "zhěng", words: ["整个","整齐","整理"], en: "whole, tidy", emoji: "" },
+    "共": { py: "gòng", words: ["共同","一共","公共"], en: "together, total", emoji: "" },
+    "总": { py: "zǒng", words: ["总是","总结","总之"], en: "always, general", emoji: "" },
+    "别": { py: "bié", words: ["别的","别人","特别"], en: "other, don't", emoji: "" },
+    "各": { py: "gè", words: ["各种","各位","各个"], en: "each, every", emoji: "" },
+    "每": { py: "měi", words: ["每天","每个","每人"], en: "every", emoji: "" },
+    "某": { py: "mǒu", words: ["某人","某个","某天"], en: "certain, some", emoji: "" },
+    "该": { py: "gāi", words: ["应该","该","活该"], en: "should, ought", emoji: "" },
+    "被": { py: "bèi", words: ["被子","被打","被动"], en: "by, quilt, passive", emoji: "" },
+    "让": { py: "ràng", words: ["让","让开","让步"], en: "let, allow, yield", emoji: "" },
+    "叫": { py: "jiào", words: ["叫","叫声","叫做"], en: "call, shout", emoji: "" },
+    "请": { py: "qǐng", words: ["请问","请进","请客"], en: "please, invite", emoji: "" },
+    "令": { py: "lìng", words: ["命令","令人","口令"], en: "order, command", emoji: "" },
+    "敢": { py: "gǎn", words: ["不敢","勇敢","敢于"], en: "dare", emoji: "" },
+    "肯": { py: "kěn", words: ["不肯","肯定","中肯"], en: "willing", emoji: "" },
+    "愿": { py: "yuàn", words: ["愿意","许愿","心愿"], en: "willing, wish", emoji: "" },
+    "得": { py: "dé", words: ["得到","得出","觉得"], en: "get, obtain", emoji: "" },
+    "必": { py: "bì", words: ["必须","必要","不必"], en: "must, necessarily", emoji: "" },
+    "须": { py: "xū", words: ["必须","胡须","须知"], en: "must, beard", emoji: "" },
+    "应": { py: "yīng", words: ["应该","应当","答应"], en: "should, respond", emoji: "" },
+    "该": { py: "gāi", words: ["应该","该","活该"], en: "should", emoji: "" },
+    "定": { py: "dìng", words: ["一定","决定","安定"], en: "fix, decide, certain", emoji: "" },
+    "成": { py: "chéng", words: ["成功","成为","完成"], en: "become, succeed", emoji: "" },
+    "任": { py: "rèn", words: ["任何","任务","信任"], en: "any, task, trust", emoji: "" },
+    "认": { py: "rèn", words: ["认识","认为","认真"], en: "recognize, think, serious", emoji: "" },
+    "知": { py: "zhī", words: ["知道","知识","不知"], en: "know", emoji: "" },
+    "道": { py: "dào", words: ["知道","道路","道理"], en: "road, way, say", emoji: "" },
+    "解": { py: "jiě", words: ["解决","了解","解释"], en: "solve, understand", emoji: "" },
+    "决": { py: "jué", words: ["决定","决心","解决"], en: "decide, determine", emoji: "" },
+    "受": { py: "shòu", words: ["接受","感受","受到"], en: "receive, suffer", emoji: "" },
+    "感": { py: "gǎn", words: ["感觉","感谢","感动"], en: "feel, sense", emoji: "" },
+    "情": { py: "qíng", words: ["事情","情况","感情"], en: "feeling, situation", emoji: "" },
+    "意": { py: "yì", words: ["意思","注意","满意"], en: "meaning, idea", emoji: "" },
+    "思": { py: "sī", words: ["思想","意思","思念"], en: "think, miss", emoji: "" },
+    "想": { py: "xiǎng", words: ["想法","想念","想象"], en: "think, miss, imagine", emoji: "" },
+    "念": { py: "niàn", words: ["想念","纪念","念书"], en: "miss, read, study", emoji: "" },
+    "信": { py: "xìn", words: ["相信","信心","写信"], en: "believe, trust, letter", emoji: "✉️" },
+    "疑": { py: "yí", words: ["怀疑","疑问","可疑"], en: "doubt, suspect", emoji: "" },
+    "确": { py: "què", words: ["确实","正确","确定"], en: "indeed, correct", emoji: "" },
+    "实": { py: "shí", words: ["实际","真实","实在"], en: "real, actual, honest", emoji: "" },
+    "真": { py: "zhēn", words: ["真的","认真","真实"], en: "real, true, really", emoji: "" },
+    "假": { py: "jiǎ", words: ["真假","假如","放假"], en: "fake, if, holiday", emoji: "" },
+    "难": { py: "nán", words: ["困难","难过","难受"], en: "difficult, sad", emoji: "" },
+    "易": { py: "yì", words: ["容易","交易","贸易"], en: "easy, trade", emoji: "" },
+    "容": { py: "róng", words: ["容易","内容","笑容"], en: "contain, appearance", emoji: "" },
+    "复": { py: "fù", words: ["复习","回答","复杂"], en: "repeat, reply, complex", emoji: "" },
+    "杂": { py: "zá", words: ["复杂","杂志","杂乱"], en: "complex, messy", emoji: "" },
+    "单": { py: "dān", words: ["简单","单独","菜单"], en: "simple, single, list", emoji: "" },
+    "简": { py: "jiǎn", words: ["简单","简直","简介"], en: "simple, brief", emoji: "" },
+    "保": { py: "bǎo", words: ["保护","保证","保存"], en: "protect, guarantee", emoji: "" },
+    "护": { py: "hù", words: ["保护","护士","拥护"], en: "protect, nurse", emoji: "" },
+    "管": { py: "guǎn", words: ["管理","不管","尽管"], en: "manage, tube, no matter", emoji: "" },
+    "理": { py: "lǐ", words: ["理解","道理","管理"], en: "reason, manage, logic", emoji: "" },
+    "治": { py: "zhì", words: ["治疗","政治","治理"], en: "govern, cure", emoji: "" },
+    "活": { py: "huó", words: ["生活","活动","活力"], en: "live, activity", emoji: "" },
+    "命": { py: "mìng", words: ["生命","命运","命令"], en: "life, fate, command", emoji: "" },
+    "死": { py: "sǐ", words: ["死亡","吓死","死板"], en: "die, dead", emoji: "" },
+    "病": { py: "bìng", words: ["生病","病人","毛病"], en: "sick, illness", emoji: "🏥" },
+    "痛": { py: "tòng", words: ["痛苦","头痛","心痛"], en: "pain, ache", emoji: "" },
+    "苦": { py: "kǔ", words: ["辛苦","痛苦","苦瓜"], en: "bitter, hard", emoji: "" },
+    "甜": { py: "tián", words: ["甜蜜","甜食","甜"], en: "sweet", emoji: "" },
+    "酸": { py: "suān", words: ["酸","心酸","酸奶"], en: "sour, acid", emoji: "" },
+    "辣": { py: "là", words: ["辣椒","辣","辛辣"], en: "spicy, hot", emoji: "🌶️" },
+    "咸": { py: "xián", words: ["咸","咸菜"], en: "salty", emoji: "" },
+    "淡": { py: "dàn", words: ["冷淡","清淡","淡"], en: "bland, light, faint", emoji: "" },
+    "油": { py: "yóu", words: ["汽油","加油","花生油"], en: "oil, grease", emoji: "" },
+    "盐": { py: "yán", words: ["盐","食盐","盐巴"], en: "salt", emoji: "🧂" },
+    "糖": { py: "táng", words: ["糖","糖果","白糖"], en: "sugar, candy", emoji: "🍬" },
+    "醋": { py: "cù", words: ["醋","吃醋","陈醋"], en: "vinegar", emoji: "" },
+    "酱": { py: "jiàng", words: ["酱油","果酱","辣椒酱"], en: "sauce, paste", emoji: "" },
+    "烟": { py: "yān", words: ["烟","香烟","烟火"], en: "smoke, cigarette", emoji: "" },
+    "酒": { py: "jiǔ", words: ["酒","啤酒","喝酒"], en: "alcohol, wine", emoji: "🍺" },
+    "肉": { py: "ròu", words: ["肉","牛肉","吃肉"], en: "meat, flesh", emoji: "🥩" },
+    "蛋": { py: "dàn", words: ["鸡蛋","蛋糕","蛋白"], en: "egg", emoji: "🥚" },
+    "奶": { py: "nǎi", words: ["牛奶","奶奶","奶粉"], en: "milk, grandma", emoji: "🥛" },
+    "汤": { py: "tāng", words: ["汤","喝汤","菜汤"], en: "soup", emoji: "🍜" },
+    "粥": { py: "zhōu", words: ["粥","喝粥","白粥"], en: "porridge, congee", emoji: "" },
+    "饼": { py: "bǐng", words: ["饼干","月饼","大饼"], en: "cake, biscuit", emoji: "🍪" },
+    "面": { py: "miàn", words: ["面条","面包","上面"], en: "noodle, face, surface", emoji: "🍜" },
+    "饺": { py: "jiǎo", words: ["饺子","水饺","包饺子"], en: "dumpling", emoji: "🥟" },
+    "菜": { py: "cài", words: ["青菜","白菜","菜单"], en: "vegetable, dish, menu", emoji: "🥬" },
+    "瓜": { py: "guā", words: ["西瓜","南瓜","黄瓜"], en: "melon", emoji: "🍈" },
+    "豆": { py: "dòu", words: ["豆腐","大豆","豆子"], en: "bean", emoji: "" },
+    "种": { py: "zhòng", words: ["种地","种花","种田"], en: "plant, grow", emoji: "" },
+    "收": { py: "shōu", words: ["收到","收入","收拾"], en: "receive, collect", emoji: "" },
+    "发": { py: "fā", words: ["发现","发生","出发"], en: "discover, happen, send", emoji: "" },
+    "长": { py: "zhǎng", words: ["长大","成长","校长"], en: "grow, leader", emoji: "" },
+    "生": { py: "shēng", words: ["生活","生日","学生"], en: "life, birthday, student", emoji: "" },
+    "产": { py: "chǎn", words: ["生产","产品","产生"], en: "produce, product", emoji: "" },
+    "活": { py: "huó", words: ["生活","活动","活力"], en: "live, activity", emoji: "" },
+    "老": { py: "lǎo", words: ["老师","老人","老板"], en: "old, teacher, boss", emoji: "" },
+    "少": { py: "shào", words: ["少年","少女","少爷"], en: "young", emoji: "" },
+    "幼": { py: "yòu", words: ["幼儿","幼稚","幼小"], en: "young, childish", emoji: "" },
+    "中": { py: "zhòng", words: ["中奖","中毒","中意"], en: "hit (target)", emoji: "" },
+    "长": { py: "cháng", words: ["很长","长短","长江"], en: "long", emoji: "" },
+    "短": { py: "duǎn", words: ["很短","短裤","短信"], en: "short", emoji: "" },
+    "宽": { py: "kuān", words: ["很宽","宽阔","宽松"], en: "wide, loose", emoji: "" },
+    "窄": { py: "zhǎi", words: ["很窄","狭窄"], en: "narrow", emoji: "" },
+    "高": { py: "gāo", words: ["很高","高兴","高度"], en: "tall, happy, altitude", emoji: "" },
+    "低": { py: "dī", words: ["很低","低头","降低"], en: "low", emoji: "" },
+    "厚": { py: "hòu", words: ["很厚","厚道","厚度"], en: "thick, honest", emoji: "" },
+    "薄": { py: "báo", words: ["很薄","薄饼","薄弱"], en: "thin, weak", emoji: "" },
+    "粗": { py: "cū", words: ["很粗","粗糙","粗心"], en: "thick, rough, careless", emoji: "" },
+    "细": { py: "xì", words: ["很细","仔细","细节"], en: "thin, fine, detail", emoji: "" },
+    "圆": { py: "yuán", words: ["圆形","团圆","元"], en: "round, circle, yuan", emoji: "⭕" },
+    "方": { py: "fāng", words: ["地方","方法","方向"], en: "place, method, direction", emoji: "" },
+    "扁": { py: "biǎn", words: ["扁","扁担","压扁"], en: "flat", emoji: "" },
+    "弯": { py: "wān", words: ["弯曲","弯腰","弯路"], en: "bent, curved", emoji: "" },
+    "直": { py: "zhí", words: ["一直","直接","直线"], en: "straight, directly", emoji: "" },
+    "平": { py: "píng", words: ["平安","平时","平等"], en: "flat, peaceful, equal", emoji: "" },
+    "正": { py: "zhèng", words: ["正在","正好","真正"], en: "just, correct, upright", emoji: "" },
+    "反": { py: "fǎn", words: ["反对","反而","反正"], en: "opposite, reverse", emoji: "" },
+    "横": { py: "héng", words: ["横","横线","蛮横"], en: "horizontal, crosswise", emoji: "" },
+    "竖": { py: "shù", words: ["竖","竖起来","横竖"], en: "vertical", emoji: "" },
+    "斜": { py: "xié", words: ["斜","倾斜","斜坡"], en: "slanting, oblique", emoji: "" },
+    "倒": { py: "dào", words: ["倒水","倒车","倒"], en: "pour, reverse", emoji: "" },
+    "顺": { py: "shùn", words: ["顺利","顺便","顺着"], en: "smooth, along", emoji: "" },
+    "利": { py: "lì", words: ["利用","顺利","利益"], en: "benefit, profit, sharp", emoji: "" },
+    "害": { py: "hài", words: ["害怕","伤害","害虫"], en: "harm, fear, pest", emoji: "" },
+    "益": { py: "yì", words: ["利益","有益","益处"], en: "benefit, profit", emoji: "" },
+    "害": { py: "hài", words: ["害怕","伤害","害虫"], en: "harm, fear", emoji: "" },
+    "利": { py: "lì", words: ["利用","利益","锋利"], en: "benefit, sharp", emoji: "" },
+    "资": { py: "zī", words: ["资料","资金","资格"], en: "resource, fund", emoji: "" },
+    "金": { py: "jīn", words: ["金色","黄金","金钱","金子"], en: "gold, money, metal", emoji: "🥇" },
+    "银": { py: "yín", words: ["银行","银色","银子"], en: "silver", emoji: "🥈" },
+    "铜": { py: "tóng", words: ["铜","铜钱","铜器"], en: "copper, bronze", emoji: "" },
+    "铁": { py: "tiě", words: ["铁","铁路","钢铁"], en: "iron", emoji: "" },
+    "钢": { py: "gāng", words: ["钢","钢铁","钢琴"], en: "steel", emoji: "" },
+    "木": { py: "mù", words: ["木头","树木","木板"], en: "wood, tree", emoji: "🪵" },
+    "竹": { py: "zhú", words: ["竹子","竹林","竹笋"], en: "bamboo", emoji: "🎋" },
+    "草": { py: "cǎo", words: ["草地","小草","草原"], en: "grass", emoji: "🌿" },
+    "花": { py: "huā", words: ["花园","红花","花钱"], en: "flower, spend", emoji: "🌸" },
+    "叶": { py: "yè", words: ["叶子","树叶","茶叶"], en: "leaf", emoji: "🍃" },
+    "根": { py: "gēn", words: ["根本","根据","树根"], en: "root, basis", emoji: "" },
+    "种": { py: "zhǒng", words: ["种子","种类","各种"], en: "seed, kind, type", emoji: "" },
+    "田": { py: "tián", words: ["田地","水田","稻田"], en: "field, farmland", emoji: "🌾" },
+    "地": { py: "dì", words: ["地上","大地","地方","土地"], en: "ground, earth, land", emoji: "🌍" },
+    "土": { py: "tǔ", words: ["土地","泥土","土豆"], en: "earth, soil", emoji: "🥔" },
+    "泥": { py: "ní", words: ["泥土","水泥","泥巴"], en: "mud, clay", emoji: "" },
+    "沙": { py: "shā", words: ["沙子","沙发","沙漠"], en: "sand", emoji: "" },
+    "石": { py: "shí", words: ["石头","宝石","石块"], en: "stone", emoji: "🪨" },
+    "砖": { py: "zhuān", words: ["砖","砖头","红砖"], en: "brick", emoji: "" },
+    "瓦": { py: "wǎ", words: ["瓦","瓦片","砖瓦"], en: "tile", emoji: "" },
+    "灰": { py: "huī", words: ["灰尘","灰色","石灰"], en: "ash, grey", emoji: "" },
+    "尘": { py: "chén", words: ["灰尘","尘土","风尘"], en: "dust", emoji: "" },
+    "烟": { py: "yān", words: ["烟火","香烟","浓烟"], en: "smoke, cigarette", emoji: "" },
+    "火": { py: "huǒ", words: ["火车","大火","着火"], en: "fire", emoji: "🔥" },
+    "光": { py: "guāng", words: ["阳光","灯光","光"], en: "light, bright", emoji: "💡" },
+    "影": { py: "yǐng", words: ["电影","影子","影响"], en: "shadow, movie", emoji: "" },
+    "声": { py: "shēng", words: ["声音","大声","名声"], en: "sound, voice", emoji: "" },
+    "音": { py: "yīn", words: ["音乐","声音","拼音"], en: "sound, music, pinyin", emoji: "🎵" },
+    "色": { py: "sè", words: ["颜色","红色","景色"], en: "color, scene", emoji: "🎨" },
+    "彩": { py: "cǎi", words: ["彩色","彩虹","精彩"], en: "color, rainbow", emoji: "🌈" },
+    "图": { py: "tú", words: ["图片","地图","图画"], en: "picture, map", emoji: "" },
+    "画": { py: "huà", words: ["画画","画家","图画"], en: "painting, draw", emoji: "🖼️" },
+    "书": { py: "shū", words: ["书本","看书","书包"], en: "book", emoji: "📖" },
+    "报": { py: "bào", words: ["报纸","报告","告诉"], en: "newspaper, report", emoji: "📰" },
+    "纸": { py: "zhǐ", words: ["纸","白纸","报纸"], en: "paper", emoji: "📄" },
+    "笔": { py: "bǐ", words: ["铅笔","笔","毛笔"], en: "pen, pencil", emoji: "✏️" },
+    "墨": { py: "mò", words: ["墨水","笔墨","墨"], en: "ink", emoji: "" },
+    "印": { py: "yìn", words: ["打印","印象","印刷"], en: "print, stamp, impression", emoji: "" },
+    "刻": { py: "kè", words: ["立刻","深刻","刻"], en: "moment, carve, engrave", emoji: "" },
+    "章": { py: "zhāng", words: ["文章","章节","盖章"], en: "chapter, seal", emoji: "" },
+    "句": { py: "jù", words: ["一句","句子","句号"], en: "sentence", emoji: "" },
+    "词": { py: "cí", words: ["词语","单词","歌词"], en: "word, lyric", emoji: "" },
+    "语": { py: "yǔ", words: ["语言","语文","英语"], en: "language", emoji: "" },
+    "文": { py: "wén", words: ["语文","文字","文化"], en: "language, culture, text", emoji: "" },
+    "化": { py: "huà", words: ["文化","变化","化学"], en: "culture, change, chemistry", emoji: "" },
+    "学": { py: "xué", words: ["学习","学校","大学"], en: "study, school, learn", emoji: "📚" },
+    "校": { py: "xiào", words: ["学校","校园","校长"], en: "school", emoji: "🏫" },
+    "课": { py: "kè", words: ["上课","课文","课程"], en: "class, lesson", emoji: "" },
+    "题": { py: "tí", words: ["问题","题目","答题"], en: "question, topic", emoji: "" },
+    "考": { py: "kǎo", words: ["考试","考虑","思考"], en: "test, consider", emoji: "" },
+    "试": { py: "shì", words: ["考试","试试","试验"], en: "test, try", emoji: "" },
+    "卷": { py: "juàn", words: ["试卷","卷子","花卷"], en: "exam paper, scroll", emoji: "" },
+    "答": { py: "dá", words: ["回答","答案","答题"], en: "answer", emoji: "" },
+    "问": { py: "wèn", words: ["问题","问答","问好"], en: "ask, question", emoji: "" },
+    "错": { py: "cuò", words: ["错误","错了","不错"], en: "wrong, mistake", emoji: "" },
+    "对": { py: "duì", words: ["对的","不对","对方"], en: "correct, pair, towards", emoji: "" },
+    "正": { py: "zhèng", words: ["正确","正在","正好"], en: "correct, just, upright", emoji: "" },
+    "误": { py: "wù", words: ["错误","误会","耽误"], en: "mistake, delay", emoji: "" },
+    "更": { py: "gēng", words: ["更换","更新","更"], en: "change, update", emoji: "" },
+    "改": { py: "gǎi", words: ["改变","改正","修改"], en: "change, correct", emoji: "" },
+    "变": { py: "biàn", words: ["变化","改变","变成"], en: "change, become", emoji: "" },
+    "化": { py: "huà", words: ["变化","化学","文化"], en: "change, chemistry", emoji: "" },
+    "换": { py: "huàn", words: ["更换","交换","换"], en: "change, exchange", emoji: "" },
+    "选": { py: "xuǎn", words: ["选择","挑选","选举"], en: "choose, select", emoji: "" },
+    "择": { py: "zé", words: ["选择","择优","抉择"], en: "choose", emoji: "" },
+    "比": { py: "bǐ", words: ["比较","对比","比赛"], en: "compare, than", emoji: "" },
+    "较": { py: "jiào", words: ["比较","较好","计较"], en: "compare, fairly", emoji: "" },
+    "评": { py: "píng", words: ["评价","评论","评分"], en: "evaluate, comment", emoji: "" },
+    "价": { py: "jià", words: ["价格","价值","价钱"], en: "price, value", emoji: "💰" },
+    "值": { py: "zhí", words: ["价值","值得","数值"], en: "value, worth", emoji: "" },
+    "量": { py: "liàng", words: ["数量","重量","大量"], en: "quantity, amount", emoji: "" },
+    "数": { py: "shù", words: ["数字","数学","数量"], en: "number, math", emoji: "" },
+    "算": { py: "suàn", words: ["算了","计算","打算"], en: "calculate, count, plan", emoji: "" },
+    "计": { py: "jì", words: ["计算","计划","会计"], en: "calculate, plan", emoji: "" },
+    "划": { py: "huà", words: ["计划","划分","策划"], en: "plan, divide", emoji: "" },
+    "预": { py: "yù", words: ["准备","预防","预计"], en: "prepare, predict", emoji: "" },
+    "备": { py: "bèi", words: ["准备","备用","设备"], en: "prepare, equipment", emoji: "" },
+    "设": { py: "shè", words: ["设计","建设","假设"], en: "design, set up, suppose", emoji: "" },
+    "建": { py: "jiàn", words: ["建设","建筑","建议"], en: "build, suggest", emoji: "" },
+    "造": { py: "zào", words: ["创造","制造","建造"], en: "create, make, build", emoji: "" },
+    "制": { py: "zhì", words: ["制造","制度","控制"], en: "make, system, control", emoji: "" },
+    "做": { py: "zuò", words: ["做饭","做事","做作业"], en: "do, make", emoji: "" },
+    "作": { py: "zuò", words: ["作业","工作","作文"], en: "work, composition", emoji: "" },
+    "干": { py: "gàn", words: ["干活","干什么","干事"], en: "do, work, capable", emoji: "" },
+    "搞": { py: "gǎo", words: ["搞好","搞","搞定"], en: "do, manage", emoji: "" },
+    "弄": { py: "nòng", words: ["弄","弄好","弄错"], en: "do, make, handle", emoji: "" },
+    "办": { py: "bàn", words: ["办法","怎么办","办公"], en: "method, handle, office", emoji: "" },
+    "法": { py: "fǎ", words: ["办法","法律","方法"], en: "method, law", emoji: "" },
+    "式": { py: "shì", words: ["方式","公式","形式"], en: "style, formula, form", emoji: "" },
+    "样": { py: "yàng", words: ["样子","怎样","这样"], en: "appearance, way, kind", emoji: "" },
+    "类": { py: "lèi", words: ["种类","人类","类型"], en: "kind, type, category", emoji: "" },
+    "型": { py: "xíng", words: ["类型","型号","典型"], en: "type, model", emoji: "" },
+    "号": { py: "hào", words: ["号码","几号","口号"], en: "number, date, slogan", emoji: "" },
+    "名": { py: "míng", words: ["名字","有名","姓名"], en: "name, famous", emoji: "" },
+    "姓": { py: "xìng", words: ["姓名","贵姓","百姓"], en: "surname", emoji: "" },
+    "称": { py: "chēng", words: ["名称","称呼","称赞"], en: "name, call, praise", emoji: "" },
+    "职": { py: "zhí", words: ["职业","职位","辞职"], en: "job, position", emoji: "" },
+    "业": { py: "yè", words: ["作业","事业","毕业"], en: "business, career, homework", emoji: "" },
+    "商": { py: "shāng", words: ["商店","商量","商人"], en: "commerce, discuss", emoji: "" },
+    "店": { py: "diàn", words: ["商店","饭店","书店"], en: "shop, store", emoji: "🏪" },
+    "厂": { py: "chǎng", words: ["工厂","厂里","出厂"], en: "factory", emoji: "🏭" },
+    "产": { py: "chǎn", words: ["生产","产品","产生"], en: "produce, product", emoji: "" },
+    "品": { py: "pǐn", words: ["产品","物品","品质"], en: "product, quality", emoji: "" },
+    "质": { py: "zhì", words: ["质量","品质","性质"], en: "quality, nature", emoji: "" },
+    "量": { py: "liàng", words: ["质量","数量","大量"], en: "quantity, quality", emoji: "" },
+    "标": { py: "biāo", words: ["标准","目标","标志"], en: "standard, mark, target", emoji: "" },
+    "准": { py: "zhǔn", words: ["标准","准备","准确"], en: "standard, accurate", emoji: "" },
+    "规": { py: "guī", words: ["规定","规则","规划"], en: "rule, regulation", emoji: "" },
+    "则": { py: "zé", words: ["规则","原则","否则"], en: "rule, principle, otherwise", emoji: "" },
+    "度": { py: "dù", words: ["温度","速度","高度"], en: "degree, extent", emoji: "" },
+    "率": { py: "lǜ", words: ["效率","概率","利率"], en: "rate, ratio", emoji: "" },
+    "力": { py: "lì", words: ["力量","能力","努力"], en: "power, ability, effort", emoji: "" },
+    "能": { py: "néng", words: ["能力","能够","可能"], en: "can, ability, energy", emoji: "" },
+    "量": { py: "liàng", words: ["能量","重量","数量"], en: "energy, weight, amount", emoji: "" },
+    "功": { py: "gōng", words: ["成功","功夫","功劳"], en: "success, skill, merit", emoji: "" },
+    "术": { py: "shù", words: ["技术","艺术","手术"], en: "technology, art, surgery", emoji: "" },
+    "科": { py: "kē", words: ["科学","科目","科技"], en: "science, subject", emoji: "" },
+    "技": { py: "jì", words: ["技术","科技","技巧"], en: "technology, skill", emoji: "" },
+    "机": { py: "jī", words: ["飞机","手机","机会"], en: "machine, phone, chance", emoji: "📱" },
+    "器": { py: "qì", words: ["机器","武器","电器"], en: "machine, weapon, device", emoji: "" },
+    "电": { py: "diàn", words: ["电话","电视","电脑"], en: "electricity, phone", emoji: "⚡" },
+    "脑": { py: "nǎo", words: ["电脑","大脑","脑袋"], en: "brain, computer", emoji: "🧠" },
+    "网": { py: "wǎng", words: ["网络","上网","网球"], en: "network, net", emoji: "🌐" },
+    "络": { py: "luò", words: ["网络","联络","脉络"], en: "network, connect", emoji: "" },
+    "信": { py: "xìn", words: ["信息","相信","写信"], en: "information, believe", emoji: "" },
+    "息": { py: "xī", words: ["信息","休息","利息"], en: "news, rest, interest", emoji: "" },
+    "码": { py: "mǎ", words: ["号码","密码","码头"], en: "number, code, wharf", emoji: "" },
+    "号": { py: "hào", words: ["号码","信号","口号"], en: "number, signal", emoji: "" },
+    "接": { py: "jiē", words: ["接受","接到","直接"], en: "receive, connect, direct", emoji: "" },
+    "连": { py: "lián", words: ["连接","连续","连"], en: "connect, even, link", emoji: "" },
+    "系": { py: "xì", words: ["关系","联系","系统"], en: "relation, connect, system", emoji: "" },
+    "统": { py: "tǒng", words: ["系统","传统","统一"], en: "system, tradition, unify", emoji: "" },
+    "传": { py: "chuán", words: ["传统","传说","传播"], en: "tradition, spread, pass", emoji: "" },
+    "统": { py: "tǒng", words: ["系统","传统","总统"], en: "system, president", emoji: "" },
+    "主": { py: "zhǔ", words: ["主要","主人","主动"], en: "main, host, active", emoji: "" },
+    "义": { py: "yì", words: ["意义","主义","义务"], en: "meaning, duty, justice", emoji: "" },
+    "理": { py: "lǐ", words: ["理想","理解","道理"], en: "ideal, understand", emoji: "" },
+    "论": { py: "lùn", words: ["理论","讨论","论文"], en: "theory, discuss", emoji: "" },
+    "想": { py: "xiǎng", words: ["思想","想象","理想"], en: "thought, imagine, ideal", emoji: "" },
+    "念": { py: "niàn", words: ["概念","观念","想念"], en: "concept, idea, miss", emoji: "" },
+    "观": { py: "guān", words: ["观察","观点","参观"], en: "observe, view, visit", emoji: "" },
+    "点": { py: "diǎn", words: ["观点","地点","一点"], en: "point, place, dot", emoji: "" },
+    "面": { py: "miàn", words: ["方面","上面","全面"], en: "aspect, surface, face", emoji: "" },
+    "体": { py: "tǐ", words: ["身体","体育","全体"], en: "body, sports, whole", emoji: "" },
+    "系": { py: "xì", words: ["系统","关系","联系"], en: "system, relation", emoji: "" },
+    "关": { py: "guān", words: ["关系","关于","关心"], en: "relation, about, care", emoji: "" },
+    "注": { py: "zhù", words: ["注意","关注","注册"], en: "note, follow, register", emoji: "" },
+    "意": { py: "yì", words: ["注意","意见","满意"], en: "attention, opinion, satisfied", emoji: "" },
+    "识": { py: "shí", words: ["认识","知识","意识"], en: "recognize, knowledge", emoji: "" },
+    "觉": { py: "jué", words: ["觉得","感觉","睡觉"], en: "feel, sleep", emoji: "" },
+    "感": { py: "gǎn", words: ["感觉","感谢","感动"], en: "feel, thank, move", emoji: "" },
+    "情": { py: "qíng", words: ["情况","感情","事情"], en: "situation, feeling, matter", emoji: "" },
+    "绪": { py: "xù", words: ["情绪","头绪","千头万绪"], en: "mood, clue", emoji: "" },
+    "态": { py: "tài", words: ["态度","状态","心态"], en: "attitude, state", emoji: "" },
+    "度": { py: "dù", words: ["态度","温度","程度"], en: "attitude, degree", emoji: "" },
+    "性": { py: "xìng", words: ["性格","女性","男性"], en: "nature, gender", emoji: "" },
+    "格": { py: "gé", words: ["性格","价格","风格"], en: "character, price, style", emoji: "" },
+    "特": { py: "tè", words: ["特别","特点","特殊"], en: "special, characteristic", emoji: "" },
+    "点": { py: "diǎn", words: ["特点","优点","缺点"], en: "point, feature", emoji: "" },
+    "优": { py: "yōu", words: ["优点","优秀","优势"], en: "advantage, excellent", emoji: "" },
+    "缺": { py: "quē", words: ["缺点","缺少","缺乏"], en: "lack, shortage", emoji: "" },
+    "长": { py: "cháng", words: ["特长","长处","成长"], en: "specialty, grow", emoji: "" },
+    "短": { py: "duǎn", words: ["短处","短裤","短信"], en: "short, weakness", emoji: "" },
+    "强": { py: "qiáng", words: ["强大","坚强","勉强","强壮"], en: "strong, powerful", emoji: "" },
+    "弱": { py: "ruò", words: ["弱点","软弱","弱小"], en: "weak", emoji: "" },
+    "大": { py: "dà", words: ["大小","大人","大家"], en: "big, adult, everyone", emoji: "" },
+    "小": { py: "xiǎo", words: ["大小","小孩","小心"], en: "small, child, careful", emoji: "" },
+    "多": { py: "duō", words: ["多少","很多","多么"], en: "many, how many", emoji: "" },
+    "少": { py: "shǎo", words: ["多少","很少","少年"], en: "few, young", emoji: "" },
+    "新": { py: "xīn", words: ["新年","新闻","新鲜"], en: "new, news, fresh", emoji: "" },
+    "旧": { py: "jiù", words: ["旧","旧的","陈旧"], en: "old, used", emoji: "" },
+    "老": { py: "lǎo", words: ["老人","老师","老板"], en: "old, teacher, boss", emoji: "" },
+    "年": { py: "nián", words: ["年轻","年龄","过年"], en: "young, age", emoji: "" },
+    "轻": { py: "qīng", words: ["年轻","轻松","轻轻"], en: "young, light, gentle", emoji: "" },
+    "重": { py: "zhòng", words: ["重要","重量","重点"], en: "important, heavy", emoji: "" },
+    "要": { py: "yào", words: ["重要","需要","不要"], en: "important, want, need", emoji: "" },
+    "紧": { py: "jǐn", words: ["紧张","要紧","紧急"], en: "tense, urgent", emoji: "" },
+    "急": { py: "jí", words: ["紧急","着急","急忙"], en: "urgent, anxious", emoji: "" },
+    "忙": { py: "máng", words: ["忙碌","帮忙","很忙"], en: "busy", emoji: "" },
+    "闲": { py: "xián", words: ["空闲","休闲","悠闲"], en: "idle, leisure", emoji: "" },
+    "累": { py: "lèi", words: ["很累","劳累","积累"], en: "tired, accumulate", emoji: "" },
+    "苦": { py: "kǔ", words: ["辛苦","痛苦","苦瓜"], en: "bitter, hard, painful", emoji: "" },
+    "甜": { py: "tián", words: ["甜蜜","甜食","甜美"], en: "sweet", emoji: "" },
+    "美": { py: "měi", words: ["美丽","美好","美国"], en: "beautiful, America", emoji: "" },
+    "好": { py: "hǎo", words: ["美好","好人","好吃"], en: "good, nice", emoji: "" },
+    "坏": { py: "huài", words: ["坏人","坏了","破坏"], en: "bad, broken", emoji: "" },
+    "善": { py: "shàn", words: ["善良","善意","善"], en: "good, kind", emoji: "" },
+    "恶": { py: "è", words: ["恶","凶恶","恶心"], en: "evil, disgusting", emoji: "" },
+    "爱": { py: "ài", words: ["可爱","爱人","爱好"], en: "love, cute", emoji: "❤️" },
+    "恨": { py: "hèn", words: ["恨","怨恨","仇恨"], en: "hate", emoji: "" },
+    "喜": { py: "xǐ", words: ["喜欢","欢喜","恭喜"], en: "happy, like", emoji: "" },
+    "欢": { py: "huān", words: ["喜欢","欢乐","欢迎"], en: "happy, welcome", emoji: "" },
+    "悲": { py: "bēi", words: ["悲伤","悲剧","悲哀"], en: "sad, tragedy", emoji: "" },
+    "哀": { py: "āi", words: ["悲哀","哀求","哀伤"], en: "sorrow, grieve", emoji: "" },
+    "怒": { py: "nù", words: ["愤怒","怒火","发怒"], en: "anger, furious", emoji: "" },
+    "惧": { py: "jù", words: ["恐惧","惧怕","畏惧"], en: "fear", emoji: "" },
+    "惊": { py: "jīng", words: ["惊讶","吃惊","惊喜"], en: "surprise, alarm", emoji: "" },
+    "吓": { py: "xià", words: ["吓人","吓一跳","惊吓"], en: "scare, frighten", emoji: "" },
+    "哭": { py: "kū", words: ["哭了","哭泣","哭声"], en: "cry", emoji: "😢" },
+    "笑": { py: "xiào", words: ["笑了","微笑","笑话"], en: "laugh, smile, joke", emoji: "😄" },
+    "乐": { py: "lè", words: ["快乐","欢乐","乐观"], en: "happy, optimistic", emoji: "" },
+    "趣": { py: "qù", words: ["有趣","兴趣","趣味"], en: "interesting, fun", emoji: "" },
+    "兴": { py: "xìng", words: ["高兴","兴趣","兴奋"], en: "happy, interest, excited", emoji: "" },
+    "奋": { py: "fèn", words: ["兴奋","奋斗","勤奋"], en: "excited, strive", emoji: "" },
+    "斗": { py: "dòu", words: ["奋斗","斗争","战斗"], en: "struggle, fight", emoji: "" },
+    "志": { py: "zhì", words: ["同志","意志","志气"], en: "comrade, will, ambition", emoji: "" },
+    "愿": { py: "yuàn", words: ["愿意","愿望","许愿"], en: "willing, wish", emoji: "" },
+    "望": { py: "wàng", words: ["希望","失望","望"], en: "hope, look", emoji: "" },
+    "梦": { py: "mèng", words: ["梦想","做梦","美梦"], en: "dream", emoji: "💭" },
+    "幻": { py: "huàn", words: ["幻想","科幻","梦幻"], en: "fantasy, illusion", emoji: "" },
+    "追": { py: "zhuī", words: ["追求","追赶","追"], en: "pursue, chase", emoji: "" },
+    "寻": { py: "xún", words: ["寻找","搜寻","寻常"], en: "search, seek", emoji: "" },
+    "找": { py: "zhǎo", words: ["找到","寻找","找"], en: "find, look for", emoji: "" },
+    "发": { py: "fā", words: ["发现","发生","发展"], en: "discover, happen, develop", emoji: "" },
+    "展": { py: "zhǎn", words: ["发展","展开","展览"], en: "develop, unfold, exhibition", emoji: "" },
+    "创": { py: "chuàng", words: ["创造","创业","创作"], en: "create, start", emoji: "" },
+    "新": { py: "xīn", words: ["创新","新鲜","新闻"], en: "innovate, new", emoji: "" },
+    "改": { py: "gǎi", words: ["改革","改进","改变"], en: "reform, improve, change", emoji: "" },
+    "善": { py: "shàn", words: ["改善","善良","完善"], en: "improve, good", emoji: "" },
+    "提": { py: "tí", words: ["提高","提供","提醒"], en: "improve, provide, remind", emoji: "" },
+    "升": { py: "shēng", words: ["提升","上升","升级"], en: "upgrade, rise", emoji: "" },
+    "增": { py: "zēng", words: ["增加","增长","增强"], en: "increase, grow", emoji: "" },
+    "加": { py: "jiā", words: ["增加","加油","加入"], en: "add, join, cheer", emoji: "" },
+    "减": { py: "jiǎn", words: ["减少","减去","减"], en: "reduce, subtract", emoji: "" },
+    "少": { py: "shǎo", words: ["减少","多少","少年"], en: "reduce, few, young", emoji: "" },
+    "扩": { py: "kuò", words: ["扩大","扩展","扩张"], en: "expand, enlarge", emoji: "" },
+    "大": { py: "dà", words: ["扩大","大人","大家"], en: "expand, adult", emoji: "" },
+    "缩": { py: "suō", words: ["缩小","缩短","压缩"], en: "shrink, reduce", emoji: "" },
+    "小": { py: "xiǎo", words: ["缩小","小孩","大小"], en: "shrink, child", emoji: "" },
+    "进": { py: "jìn", words: ["进步","进行","进入"], en: "progress, enter", emoji: "" },
+    "退": { py: "tuì", words: ["退步","后退","退休"], en: "retreat, return, retire", emoji: "" },
+    "步": { py: "bù", words: ["进步","跑步","步骤"], en: "step, progress", emoji: "" },
+    "前": { py: "qián", words: ["前进","以前","前面"], en: "forward, before, front", emoji: "" },
+    "后": { py: "hòu", words: ["后退","以后","后面"], en: "backward, after, behind", emoji: "" },
+    "左": { py: "zuǒ", words: ["左右","左边","左手"], en: "left", emoji: "⬅️" },
+    "右": { py: "yòu", words: ["左右","右边","右手"], en: "right", emoji: "➡️" },
+    "上": { py: "shàng", words: ["上面","上学","上班"], en: "up, above, go to", emoji: "" },
+    "下": { py: "xià", words: ["下面","下午","下雨"], en: "down, below, afternoon", emoji: "" },
+    "中": { py: "zhōng", words: ["中间","中国","中午"], en: "middle, China, noon", emoji: "" },
+    "里": { py: "lǐ", words: ["里面","这里","那里"], en: "inside, here, there", emoji: "" },
+    "外": { py: "wài", words: ["外面","外国","外出"], en: "outside, foreign", emoji: "" },
+    "边": { py: "biān", words: ["旁边","那边","这边"], en: "side, edge", emoji: "" },
+    "旁": { py: "páng", words: ["旁边","身旁","旁人"], en: "side, other", emoji: "" },
+    "角": { py: "jiǎo", words: ["角落","角度","一角"], en: "corner, angle", emoji: "" },
+    "落": { py: "luò", words: ["角落","落下","落叶"], en: "fall, drop, leave", emoji: "" },
+    "底": { py: "dǐ", words: ["底下","到底","底部"], en: "bottom, end", emoji: "" },
+    "顶": { py: "dǐng", words: ["头顶","屋顶","山顶"], en: "top, peak", emoji: "" },
+    "心": { py: "xīn", words: ["开心","关心","小心"], en: "heart, happy, careful", emoji: "❤️" },
+    "头": { py: "tóu", words: ["头发","前头","后头"], en: "head, front", emoji: "" },
+    "脸": { py: "liǎn", words: ["洗脸","脸红","笑脸"], en: "face", emoji: "" },
+    "眼": { py: "yǎn", words: ["眼睛","眼泪","眼前"], en: "eye, tears", emoji: "👁️" },
+    "耳": { py: "ěr", words: ["耳朵","耳机","耳边"], en: "ear, earphone", emoji: "👂" },
+    "鼻": { py: "bí", words: ["鼻子","鼻涕","鼻"], en: "nose", emoji: "👃" },
+    "嘴": { py: "zuǐ", words: ["嘴巴","嘴角","嘴"], en: "mouth", emoji: "👄" },
+    "舌": { py: "shé", words: ["舌头","口舌","舌尖"], en: "tongue", emoji: "👅" },
+    "手": { py: "shǒu", words: ["手指","手","右手"], en: "hand, finger", emoji: "✋" },
+    "指": { py: "zhǐ", words: ["手指","指甲","指挥"], en: "finger, nail, command", emoji: "" },
+    "脚": { py: "jiǎo", words: ["脚","脚下","脚步"], en: "foot", emoji: "🦶" },
+    "腿": { py: "tuǐ", words: ["大腿","腿","跑腿"], en: "leg", emoji: "" },
+    "肩": { py: "jiān", words: ["肩膀","肩上","肩"], en: "shoulder", emoji: "" },
+    "背": { py: "bèi", words: ["背后","背书包","背影"], en: "back, carry on back", emoji: "" },
+    "胸": { py: "xiōng", words: ["胸口","胸","挺胸"], en: "chest", emoji: "" },
+    "肚": { py: "dù", words: ["肚子","肚皮","肚"], en: "belly, stomach", emoji: "" },
+    "腰": { py: "yāo", words: ["腰","弯腰","腰带"], en: "waist", emoji: "" },
+    "血": { py: "xuè", words: ["出血","血液","血"], en: "blood", emoji: "🩸" },
+    "肉": { py: "ròu", words: ["肉","肌肉","牛肉"], en: "meat, flesh", emoji: "🥩" },
+    "骨": { py: "gǔ", words: ["骨头","骨","骨折"], en: "bone", emoji: "" },
+    "皮": { py: "pí", words: ["皮肤","皮","果皮"], en: "skin, peel", emoji: "" },
+    "毛": { py: "máo", words: ["毛","毛衣","毛发"], en: "hair, wool, fur", emoji: "" },
+    "汗": { py: "hàn", words: ["出汗","汗水","汗"], en: "sweat", emoji: "💧" },
+    "泪": { py: "lèi", words: ["眼泪","泪水","泪"], en: "tear", emoji: "😢" },
+    "发": { py: "fà", words: ["头发","理发","白发"], en: "hair", emoji: "" },
+    "更": { py: "gèng", words: ["更好","更加"], en: "even more", emoji: "" },
+    "挺": { py: "tǐng", words: ["挺好","挺棒"], en: "quite, very", emoji: "" },
+    "特": { py: "tè", words: ["特别","特殊"], en: "special", emoji: "" },
+    "太": { py: "tài", words: ["太多","太阳"], en: "too, sun", emoji: "" },
+    "极": { py: "jí", words: ["极了","北极"], en: "extremely, pole", emoji: "" },
+    "非": { py: "fēi", words: ["非常","非洲"], en: "very, Africa", emoji: "" },
+    "常": { py: "cháng", words: ["经常","非常"], en: "often, very", emoji: "" },
+    "已": { py: "yǐ", words: ["已经","已然"], en: "already", emoji: "" },
+    "经": { py: "jīng", words: ["已经","经过"], en: "already, pass through", emoji: "" },
+    "就": { py: "jiù", words: ["就是","就要"], en: "just, then", emoji: "" },
+    "才": { py: "cái", words: ["刚才","才能"], en: "just now, only then", emoji: "" },
+    "都": { py: "dōu", words: ["都是","都要"], en: "all", emoji: "" },
+    "只": { py: "zhǐ", words: ["只有","只好"], en: "only", emoji: "" },
+    "又": { py: "yòu", words: ["又来","又大"], en: "again", emoji: "" },
+    "也": { py: "yě", words: ["也是","也好"], en: "also", emoji: "" },
+    "没": { py: "méi", words: ["没有","没来"], en: "not, didn't", emoji: "" },
+    "别": { py: "bié", words: ["别的","别人"], en: "other, don't", emoji: "" },
+    "给": { py: "gěi", words: ["给你","给你"], en: "give", emoji: "" },
+    "被": { py: "bèi", words: ["被子","被打"], en: "by, quilt", emoji: "" },
+    "把": { py: "bǎ", words: ["把握","一把"], en: "hold, (measure)", emoji: "" },
+    "用": { py: "yòng", words: ["用","使用"], en: "use", emoji: "" },
+    "为": { py: "wèi", words: ["为了","为什么"], en: "for, because", emoji: "" },
+    "从": { py: "cóng", words: ["从前","从来"], en: "from", emoji: "" },
+    "到": { py: "dào", words: ["到了","看到"], en: "to, arrive", emoji: "" },
+    "过": { py: "guò", words: ["过来","过去"], en: "pass, cross", emoji: "" },
+    "来": { py: "lái", words: ["来了","回来"], en: "come", emoji: "" },
+    "去": { py: "qù", words: ["去了","回去"], en: "go", emoji: "" },
+    "出": { py: "chū", words: ["出去","出来"], en: "out, go out", emoji: "" },
+    "回": { py: "huí", words: ["回来","回去"], en: "return", emoji: "" },
+    "起": { py: "qǐ", words: ["起来","一起"], en: "rise, together", emoji: "" },
+    "到": { py: "dào", words: ["到了","得到"], en: "arrive, get", emoji: "" },
+    "着": { py: "zhe", words: ["看着","听着"], en: "(progressive marker)", emoji: "" },
+    "地": { py: "de", words: ["慢慢地","开心地"], en: "-ly (adverb marker)", emoji: "" },
+    "得": { py: "de", words: ["跑得快","做得好"], en: "(complement marker)", emoji: "" },
+};
+// 合并扩展字典到主字典
+Object.assign(PINYIN_DICT, PINYIN_DICT_EXT);
+
+// ============================================================
+//  超级补充字典（第三部分：300+高频常用字，最小格式）
+// ============================================================
+const PINYIN_DICT_CORE = {
+    "个":"gè","和":"hé","时":"shí","自":"zì","之":"zhī","行":"xíng",
+    "所":"suǒ","然":"rán","事":"shì","么":"me","如":"rú","同":"tóng",
+    "现":"xiàn","当":"dāng","没":"méi","面":"miàn","起":"qǐ","看":"kàn",
+    "定":"dìng","天":"tiān","分":"fēn","还":"hái","进":"jìn","好":"hǎo",
+    "小":"xiǎo","部":"bù","其":"qí","些":"xiē","主":"zhǔ","样":"yàng",
+    "理":"lǐ","心":"xīn","她":"tā","本":"běn","前":"qián","开":"kāi",
+    "但":"dàn","因":"yīn","只":"zhǐ","从":"cóng","想":"xiǎng","实":"shí",
+    "日":"rì","军":"jūn","者":"zhě","意":"yì","无":"wú","力":"lì",
+    "它":"tā","与":"yǔ","长":"cháng","把":"bǎ","机":"jī","民":"mín",
+    "第":"dì","公":"gōng","此":"cǐ","已":"yǐ","工":"gōng","使":"shǐ",
+    "情":"qíng","明":"míng","性":"xìng","知":"zhī","全":"quán","又":"yòu",
+    "关":"guān","点":"diǎn","正":"zhèng","业":"yè","外":"wài","将":"jiāng",
+    "两":"liǎng","高":"gāo","间":"jiān","由":"yóu","问":"wèn","很":"hěn",
+    "最":"zuì","重":"zhòng","并":"bìng","物":"wù","手":"shǒu","应":"yīng",
+    "战":"zhàn","向":"xiàng","头":"tóu","文":"wén","体":"tǐ","政":"zhèng",
+    "美":"měi","相":"xiāng","见":"jiàn","被":"bèi","利":"lì","什":"shén",
+    "等":"děng","产":"chǎn","或":"huò","新":"xīn","己":"jǐ","制":"zhì",
+    "身":"shēn","果":"guǒ","加":"jiā","西":"xī","斯":"sī","月":"yuè",
+    "话":"huà","合":"hé","回":"huí","特":"tè","代":"dài","内":"nèi",
+    "信":"xìn","表":"biǎo","化":"huà","老":"lǎo","给":"gěi","世":"shì",
+    "位":"wèi","次":"cì","度":"dù","门":"mén","任":"rèn","常":"cháng",
+    "先":"xiān","海":"hǎi","通":"tōng","教":"jiào","儿":"ér","原":"yuán",
+    "东":"dōng","声":"shēng","提":"tí","立":"lì","及":"jí","比":"bǐ",
+    "员":"yuán","解":"jiě","水":"shuǐ","名":"míng","真":"zhēn","论":"lùn",
+    "处":"chù","走":"zǒu","义":"yì","各":"gè","入":"rù","几":"jǐ",
+    "口":"kǒu","认":"rèn","条":"tiáo","平":"píng","系":"xì","气":"qì",
+    "题":"tí","活":"huó","尔":"ěr","更":"gèng","别":"bié","打":"dǎ",
+    "女":"nǚ","变":"biàn","四":"sì","神":"shén","总":"zǒng","何":"hé",
+    "电":"diàn","数":"shù","安":"ān","少":"shǎo","报":"bào","才":"cái",
+    "结":"jié","反":"fǎn","受":"shòu","目":"mù","太":"tài","量":"liàng",
+    "再":"zài","感":"gǎn","建":"jiàn","务":"wù","做":"zuò","快":"kuài",
+    "深":"shēn","商":"shāng","算":"suàn","百":"bǎi","亲":"qīn","落":"luò",
+    "联":"lián","步":"bù","热":"rè","乐":"lè","据":"jù","飞":"fēi",
+    "风":"fēng","科":"kē","增":"zēng","议":"yì","南":"nán","术":"shù",
+    "规":"guī","基":"jī","青":"qīng","厂":"chǎng","北":"běi","取":"qǔ",
+    "花":"huā","严":"yán","求":"qiú","治":"zhì","投":"tóu","行":"xíng",
+    "己":"jǐ","王":"wáng","白":"bái","谈":"tán","财":"cái","马":"mǎ",
+    "社":"shè","温":"wēn","古":"gǔ","广":"guǎng","州":"zhōu","拿":"ná",
+    "计":"jì","突":"tū","拉":"lā","苏":"sū","刚":"gāng","称":"chēng",
+    "约":"yuē","股":"gǔ","视":"shì","范":"fàn","整":"zhěng","容":"róng",
+    "影":"yǐng","犯":"fàn","调":"diào","价":"jià","块":"kuài","土":"tǔ",
+    "效":"xiào","值":"zhí","望":"wàng","护":"hù","希":"xī","食":"shí",
+    "抓":"zhuā","够":"gòu","伤":"shāng","追":"zhuī","秀":"xiù","掉":"diào",
+    "宜":"yí","企":"qǐ","舞":"wǔ","藏":"cáng","荣":"róng","春":"chūn",
+    "冷":"lěng","铁":"tiě","柔":"róu","童":"tóng","浮":"fú","触":"chù",
+    "探":"tàn","摇":"yáo","健":"jiàn","胸":"xiōng","穷":"qióng","援":"yuán",
+    "枝":"zhī","浑":"hún","鬼":"guǐ","邪":"xié","污":"wū","缘":"yuán",
+    "患":"huàn","聚":"jù","慰":"wèi","寂":"jì","钻":"zuān","奉":"fèng",
+    "键":"jiàn","敌":"dí","泉":"quán","庆":"qìng","孝":"xiào","徒":"tú",
+    "俱":"jù","袋":"dài","淡":"dàn","碧":"bì","壮":"zhuàng","斜":"xié",
+    "焦":"jiāo","兔":"tù","鸟":"niǎo","狼":"láng","猜":"cāi","赤":"chì",
+    "旋":"xuán","搬":"bān","刺":"cì","浩":"hào","辰":"chén","础":"chǔ",
+    "申":"shēn","鲁":"lǔ","韦":"wéi","昌":"chāng","苗":"miáo","凤":"fèng",
+    "方":"fāng","柳":"liǔ","丰":"fēng","史":"shǐ","唐":"táng","费":"fèi",
+    "雷":"léi","贺":"hè","罗":"luó","毕":"bì","安":"ān","常":"cháng",
+    "乐":"lè","于":"yú","傅":"fù","皮":"pí","齐":"qí","康":"kāng",
+    "余":"yú","元":"yuán","孟":"mèng","黄":"huáng","和":"hé","穆":"mù",
+    "尹":"yǐn","姚":"yáo","汪":"wāng","毛":"máo","贝":"bèi","明":"míng",
+    "伏":"fú","成":"chéng","戴":"dài","宋":"sòng","熊":"xióng","纪":"jì",
+    "舒":"shū","屈":"qū","项":"xiàng","祝":"zhù","董":"dǒng","梁":"liáng",
+    "杜":"dù","蓝":"lán","席":"xí","季":"jì","强":"qiáng","贾":"jiǎ",
+    "路":"lù","危":"wēi","江":"jiāng","颜":"yán","梅":"méi","盛":"shèng",
+    "林":"lín","钟":"zhōng","徐":"xú","高":"gāo","夏":"xià","田":"tián",
+    "胡":"hú","凌":"líng","万":"wàn","柯":"kē","管":"guǎn","卢":"lú",
+    "莫":"mò","经":"jīng","房":"fáng","干":"gān","解":"jiě","应":"yīng",
+    "宗":"zōng","丁":"dīng","宣":"xuān","邓":"dèng","单":"shān","洪":"hóng",
+    "包":"bāo","诸":"zhū","左":"zuǒ","石":"shí","吉":"jí","程":"chéng",
+    "裴":"péi","陆":"lù","荣":"róng","翁":"wēng","羊":"yáng","惠":"huì",
+    "曲":"qū","封":"fēng","井":"jǐng","段":"duàn","富":"fù","巫":"wū",
+    "焦":"jiāo","巴":"bā","弓":"gōng","侯":"hóu","秋":"qiū","仲":"zhòng",
+    "宫":"gōng","宁":"níng","仇":"qiú","甘":"gān","厉":"lì","戎":"róng",
+    "祖":"zǔ","武":"wǔ","符":"fú","刘":"liú","景":"jǐng","龙":"lóng",
+    "叶":"yè","幸":"xìng","司":"sī","黎":"lí","薄":"bó","印":"yìn",
+    "宿":"sù","怀":"huái","蒲":"pú","从":"cóng","索":"suǒ","赖":"lài",
+    "卓":"zhuó","蒙":"méng","池":"chí","乔":"qiáo","阴":"yīn","闻":"wén",
+    "党":"dǎng","谭":"tán","贡":"gòng","劳":"láo","姬":"jī","冉":"rǎn",
+    "桑":"sāng","桂":"guì","牛":"niú","寿":"shòu","通":"tōng","边":"biān",
+    "燕":"yàn","冀":"jì","尚":"shàng","农":"nóng","别":"bié","庄":"zhuāng",
+    "柴":"chái","阎":"yán","充":"chōng","连":"lián","习":"xí","艾":"ài",
+    "鱼":"yú","容":"róng","向":"xiàng","易":"yì","慎":"shèn","廖":"liào",
+    "终":"zhōng","居":"jū","衡":"héng","步":"bù","都":"dōu","耿":"gěng",
+    "满":"mǎn","弘":"hóng","文":"wén","广":"guǎng","东":"dōng","沃":"wò",
+    "越":"yuè","隆":"lóng","师":"shī","聂":"niè","冷":"lěng","辛":"xīn",
+    "简":"jiǎn","饶":"ráo","空":"kōng","曾":"zēng","沙":"shā","养":"yǎng",
+    "须":"xū","丰":"fēng","巢":"cháo","相":"xiāng","查":"chá","后":"hòu",
+    "红":"hóng","游":"yóu","权":"quán","盖":"gài","益":"yì","公":"gōng",
+};
+// 将最小格式转为完整格式
+for (const [char, py] of Object.entries(PINYIN_DICT_CORE)) {
+    if (!PINYIN_DICT[char]) {
+        PINYIN_DICT[char] = { py: py, words: [], en: "", emoji: "" };
+    }
+}
+
+// ============================================================
+//  常见二字词组（用于词组级别错别字检查）
+//  核心逻辑：如果两个字的组合不在这个词表里，就可能是错别字
+// ============================================================
+const VALID_WORDS = new Set([
+    // 时间相关
+    "今天","明天","昨天","后天","前天","每天","哪天","那天","这天",
+    "今年","去年","明年","每年","哪年","那年",
+    "本月","上月","下月","这月","那月",
+    "早上","上午","中午","下午","傍晚","晚上","夜里","晚间",
+    "刚才","刚刚","将要","快要","已经","曾经","正在","现在",
+    "以前","以后","之后","之前","往后","从前","将来","未来",
+    "时刻","时间","时期","时代","时候","时代","时机",
+    "永远","长久","好久","不久","好久","短暂","永久",
+    // 常用动词+名词组合
+    "吃饭","喝水","睡觉","起床","洗脸","刷牙","穿衣","出门","回家",
+    "上学","上班","下班","开会","写字","看书","走路","跑步","开车",
+    "做饭","做菜","洗衣","扫地","拖地","擦桌","浇花","喂鸡","喂狗",
+    "打电话","看电视","听音乐","讲故事","说笑话","写作业","做练习",
+    "买东西","卖东西","花钱","赚钱","存钱","借钱","还钱",
+    "看病","吃药","打针","住院","出院","挂号",
+    "唱歌","跳舞","打球","游泳","爬山","钓鱼","下棋","打牌",
+    "说话","听话","聊天","吵架","道歉","感谢","告别","介绍",
+    // 形容词+名词
+    "好人","坏人","大人","小孩","老人","男人","女人","年轻人",
+    "好事","坏事","大事","小事","故事","心事","同事","本事",
+    "大山","小河","大海","高山","长河","远山","深海","浅滩",
+    "蓝天","白云","红花","绿树","白雪","黑土","黄土","清水",
+    "大树","小草","鲜花","绿叶","枯叶","落叶",
+    "小狗","小猫","小鸡","小鱼","小鸟","小马","小牛","小羊",
+    "公鸡","母鸡","白马","黄牛","黑狗","花猫",
+    // 常见二字词
+    "今天","明天","昨天","高兴","快乐","难过","生气","害怕",
+    "漂亮","好看","好吃","好玩","好听","好笑",
+    "干净","整齐","漂亮","美丽","可爱","温柔","聪明","厉害",
+    "认真","努力","辛苦","轻松","开心","放心","安心","关心",
+    "明白","知道","理解","认识","发现","觉得","认为","希望",
+    "告诉","建议","选择","决定","准备","计划","安排","同意",
+    "需要","可以","能够","应该","必须","愿意","喜欢","讨厌",
+    "想念","回忆","记住","忘记","学到","教会","练习","考试",
+    "正确","错误","成功","失败","胜利","进步","退步","变化",
+    "开始","结束","继续","停止","完成","出发","到达","离开",
+    "回来","过去","过来","上去","下来","进来","出去","回来",
+    "简单","困难","容易","复杂","麻烦","方便","安全","危险",
+    "温暖","凉快","炎热","寒冷","闷热","潮湿","干燥","新鲜",
+    "安静","热闹","拥挤","空旷","宽阔","狭窄","平坦","陡峭",
+    "真实","虚假","诚实","欺骗","善良","凶狠","友好","敌对",
+    "丰富","缺少","足够","过分","正常","奇怪","普通","特别",
+    // 地点
+    "家里","学校","医院","商店","超市","饭店","银行","邮局",
+    "公园","广场","车站","机场","码头","工厂","农村","城市",
+    "北京","上海","广州","深圳","贵州","四川","云南","湖南",
+    // 称呼
+    "爸爸","妈妈","爷爷","奶奶","叔叔","阿姨","哥哥","姐姐",
+    "弟弟","妹妹","儿子","女儿","丈夫","妻子","先生","小姐",
+    "老师","医生","护士","司机","警察","工人","农民","学生",
+    // 易混淆词组（正确写法）
+    "今天","已经","以后","以为","以前","以往",
+    "再见","在家","现在","正在","实在","存在",
+    "做事","作业","作用","工作","做法","作文",
+    "道路","到达","到底","道理","道德","道歉",
+    "进去","进步","进出","进入","进展","前进",
+    "尽头","尽力","尽量","尽情","尽快","尽早",
+    "地方","土地","大地","地点","地区","地位",
+    "得到","得知","得出","得分","得出",
+    "买到","买到","买卖","买菜","买票",
+    "卖出","卖菜","卖票","卖东西",
+    "坐下","坐落","坐标","座位","座谈",
+    "戴上","戴上","穿戴","戴帽","佩戴",
+    "带来","带走","带上","带头","带领",
+    "晴天","晴朗","晴空","天晴","放晴",
+    "清水","清楚","清晰","清凉","清洗",
+    "请问","请进","请假","请客","邀请",
+    "事情","情况","情形","情绪","感情",
+    "很好","很多","很大","很快","很高","很长",
+    "狠心","狠毒","凶狠",
+    "看见","看到","看着","看望","看法",
+    "好像","画像","画像","想象","景象",
+    "方向","向前","向往","向来","转向",
+    "工作","工人","工厂","工业","工具",
+    "公共","公路","公园","公开","公平","公正",
+    "一只","一只","只有","只是","只要",
+    "各种","各位","各自","各处","各个",
+    "大家","大人","大小","大量","大概","大约",
+    "太阳","太空","天气","天下","天空",
+    "国家","国内","国外","国际","国庆",
+    "花园","花费","花样","开花","雪花",
+    "变化","化学","化石","化解","化妆",
+    "说话","说明","说服","说法","说笑",
+    "画画","画家","画笔","画报","画面",
+    "生日","生活","生命","生动","生长",
+    "声音","声明","声响","名声","大声",
+    "上升","升高","升学","升级","提升",
+    "成功","成果","成绩","成为","成人",
+    "城市","长城","城墙","城门","进城",
+    "空气","天气","生气","力气","气球",
+    "汽油","汽车","汽水","汽笛",
+    "站立","站住","车站","站台","站长",
+    "平安","平时","平常","平等","平衡",
+    "评价","评论","评分","评比","评估",
+    "千万","千古","千金","千里","秋千",
+    "干活","干杯","干净","干吗","干脆",
+    "出去","出门","出发","出路","出国",
+    "法律","法院","法官","法规","法宝",
+    "道理","道路","道德","道歉","到家",
+    "回来","回去","回家","回答","回忆",
+    "看见","看书","看法","看望","看病",
+    "开心","开始","开学","开工","开口",
+    "关门","关闭","关心","关于","关系",
+    "里面","理解","理由","理论","理想",
+    "新年","新闻","新鲜","新娘","新手",
+    "马上","马路","马车","马虎","骑马",
+    "米","米饭","大米","玉米","米粉",
+    "年前","年纪","年龄","年轻","过年",
+    "朋友","亲朋","宾朋",
+    "平安","平时","平常","平等","平凡",
+    "起来","起床","起飞","起点","起身",
+    "出去","出来","出门","出发","出差",
+    "上去","上来","上学","上班","上门",
+    "下来","下午","下去","下次","下班",
+    "进来","进去","进入","进步","进步",
+    "回来","回去","回家","回到","回答",
+    // 就+X 常见组合（防止"就"被误报为"进"）
+    "就好","就是","就要","就去","就来","就算","就位","就餐","就此","就读","就地","就近","就手","就让","就走","就跑","就吃","就喝","就看","就听","就说","就想","就做","就不","就没","也就","这就","那就","成就","将就","迁就","造就","就算","就行","就够","就好","就差","就对","就错","就能","就会","就得","就该","就不","就没",
+    // 更多常见词
+    "哪里","那个","那里","那么","那些","那样",
+    "这个","这里","这么","这些","这样",
+    "什么","怎么","多么","那么","这么",
+    "你好","谢谢","对不起","再见","没关系",
+    "没有","不是","可以","可能","应该",
+    "因为","所以","但是","而且","如果",
+    "虽然","不过","或者","还是","就是",
+    "终于","突然","忽然","居然","果然",
+    "一直","一起","一定","一般","一些",
+    "一个","两个","三个","四个","五个",
+    "不要","不用","不行","不好","不错",
+    "还有","还有","还是","还要","还会",
+    "他们","她们","我们","你们","咱们",
+    "自己","别人","大家","人家","个人",
+    "知道","认识","觉得","认为","以为",
+    "想要","需要","还要","不要","只要",
+    "正在","已经","快要","将要","就要",
+    "很","非常","特别","十分","相当",
+    "怎么","怎样","怎么样","如何",
+    "为什么","干什么","做什么","是什么",
+    "多少","几个","几岁","几天",
+    "哪儿","哪里","那边","这边",
+    "这样","那样","怎样","怎么样",
+    // 更多常用二字词
+    "平时","平常","常常","经常","往往",
+    "突然","忽然","猛然","猛然",
+    "终于","最终","最初","最近","最后",
+    "立刻","马上","立即","及时",
+    "慢慢","渐渐","逐渐","逐步",
+    "完全","全部","所有","一切",
+    "简单","容易","困难","复杂",
+    "重要","主要","必要","需要",
+    "真正","真实","认真","当真",
+    "高兴","开心","快乐","愉快",
+    "难过","伤心","痛苦","悲伤",
+    "生气","愤怒","恼火","发火",
+    "担心","操心","关心","放心",
+    "希望","期望","盼望","指望",
+    "感谢","感激","感恩","谢谢",
+    "抱歉","对不起","道歉","不好意思",
+    "欢迎","迎接","接待","招待",
+    "离开","告别","分手","出发",
+    "到达","抵达","来到","回到",
+    "明白","清楚","理解","懂得",
+    "相信","信任","信赖","确信",
+    "同意","赞成","支持","反对",
+    "帮助","帮忙","协助","支援",
+    "保护","保卫","爱护","维护",
+    "检查","检验","查看","观察",
+    "改变","变化","转变","改动",
+    "发展","进展","进步","前进",
+    "提高","提升","增加","增长",
+    "减少","降低","下降","缩短",
+    "完成","结束","终止","完毕",
+    "开始","启动","出发","开端",
+    "继续","持续","延续","接着",
+    "停止","暂停","中断","停顿",
+    "保持","坚持","维持","坚守",
+    "参加","参与","加入","出席",
+    "举行","举办","召开","进行",
+    "通知","告诉","报告","告知",
+    "建议","提议","主张","推荐",
+    "讨论","商量","商议","议论",
+    "解释","说明","阐述","描述",
+    "回答","答复","回应","回话",
+    "请求","要求","恳求","申请",
+    "拒绝","回绝","谢绝","推辞",
+    "接受","接收","接纳","承受",
+    "欢迎","迎接","接待","招待",
+    "送别","告别","欢送","送行",
+    "庆祝","祝贺","恭喜","恭贺",
+    "安慰","慰问","安抚","宽慰",
+    "批评","指责","责备","抱怨",
+    "表扬","夸奖","称赞","赞美",
+    "鼓励","激励","勉励","鼓舞",
+    "教训","教育","培养","培训",
+    "学习","练习","复习","预习",
+    "研究","探讨","探索","钻研",
+    "发明","发现","创造","创新",
+    "生产","制造","制作","加工",
+    "建设","建造","建筑","修建",
+    "修理","修复","维修","修补",
+    "清洁","清扫","打扫","清理",
+    "整理","收拾","归纳","整理",
+    "安排","布置","计划","筹备",
+    "准备","预备","筹备","防备",
+    "管理","经营","运营","治理",
+    "领导","带领","指导","引导",
+    "服务","帮忙","效劳","效力",
+    "合作","协作","配合","团结",
+    "竞争","比赛","竞赛","角逐",
+    "胜利","赢","获胜","取胜",
+    "失败","输","落败","失利",
+    "得分","进球","命中","击中",
+    "运动","锻炼","健身","活动",
+    "休息","歇息","休养","歇歇",
+    "工作","劳动","干活","上班",
+    "旅行","旅游","出游","远足",
+    "散步","溜达","漫步","闲逛",
+    "聊天","闲聊","谈天","唠嗑",
+    "商量","讨论","商议","协商",
+    "吵架","争执","争论","口角",
+    "和好","和解","重归","言和",
+    "认识","了解","熟悉","知晓",
+    "喜欢","喜爱","爱好","钟爱",
+    "讨厌","厌恶","反感","嫌弃",
+    "想念","思念","怀念","挂念",
+    "记住","记得","铭记","牢记",
+    "忘记","遗忘","忘却","忘掉",
+    "回忆","回想","追忆","回顾",
+    "梦想","理想","愿望","希望",
+    "计划","打算","安排","规划",
+    "意见","建议","看法","主意",
+    "问题","难题","疑问","困惑",
+    "答案","解决","解答","释疑",
+    "理由","原因","缘故","缘由",
+    "结果","结局","后果","成果",
+    "方法","方式","办法","手段",
+    "经验","经历","阅历","体验",
+    "知识","学问","学识","见识",
+    "能力","本事","才能","技能",
+    "机会","机遇","时机","机缘",
+    "条件","前提","基础","因素",
+    "环境","氛围","情形","状况",
+    "情况","情形","状况","形势",
+    "消息","新闻","信息","报道",
+    "故事","传说","典故","趣事",
+    "笑话","趣闻","趣事","幽默",
+    "秘密","隐私","隐秘","机密",
+    "特点","特征","特色","特性",
+    "优点","长处","好处","强项",
+    "缺点","短处","毛病","弱点",
+    "成绩","成果","成就","业绩",
+    "困难","艰难","坎坷","艰苦",
+    "成功","胜利","得胜","告捷",
+    "失败","挫折","失利","挫败",
+    "进步","进展","提高","提升",
+    "退步","倒退","落后","下滑",
+    "变化","改变","转变","变动",
+    "发展","进展","前进","进步",
+    "历史","传统","文化","文明",
+    "科学","技术","科技","学术",
+    "教育","教学","培养","培训",
+    "经济","金融","财政","财务",
+    "政治","政策","方针","策略",
+    "社会","社区","群体","集体",
+    "自然","天然","生态","环境",
+    "艺术","美术","音乐","文艺",
+    "体育","运动","竞技","健身",
+    "健康","身体","体质","体魄",
+    "安全","平安","稳定","保险",
+    "危险","风险","威胁","危害",
+    "和平","安宁","太平","和谐",
+    "战争","战斗","冲突","争端",
+    "自由","民主","平等","公正",
+    "幸福","美满","甜蜜","温馨",
+    "痛苦","苦难","折磨","煎熬",
+    "孤独","寂寞","冷清","清冷",
+    "热闹","繁华","兴旺","旺盛",
+    "安静","宁静","清静","幽静",
+    "忙碌","繁忙","紧张","紧迫",
+    "悠闲","清闲","闲暇","空闲",
+    "贫穷","贫困","困难","拮据",
+    "富裕","富有","富足","丰足",
+    // 生活常用词（大量补充）
+    "漂亮","美丽","好看","英俊","帅气","可爱","迷人","优雅",
+    "干净","整洁","整齐","卫生","清洁","清爽","清新",
+    "聪明","智慧","机灵","伶俐","精明","灵活","敏锐",
+    "勇敢","坚强","果断","刚毅","顽强","坚韧","不屈",
+    "善良","温柔","体贴","细心","耐心","用心","真心",
+    "诚实","老实","真诚","坦诚","诚恳","诚心","诚意",
+    "努力","勤奋","刻苦","用功","认真","仔细","踏实",
+    "快乐","开心","高兴","愉快","欢乐","喜悦","幸福",
+    "难过","伤心","悲伤","痛苦","委屈","沮丧","失落",
+    "生气","愤怒","恼火","恼怒","暴怒","火大","来火",
+    "害怕","恐惧","畏惧","胆怯","心慌","紧张","发慌",
+    "担心","担忧","操心","挂念","惦记","牵挂","放心",
+    "想念","思念","怀念","惦念","挂念","念叨","念想",
+    "感谢","感激","感恩","谢谢","多谢","谢天谢地",
+    "抱歉","对不起","不好意思","过意不去","请原谅",
+    "喜欢","喜爱","爱好","钟爱","中意","看上","相中",
+    "讨厌","厌恶","反感","嫌弃","看不惯","受不了",
+    "相信","信任","信赖","确信","深信","坚信","信得过",
+    "怀疑","猜疑","疑惑","质疑","半信半疑","不信",
+    "知道","了解","明白","清楚","懂得","晓得","认得",
+    "认识","熟悉","面熟","眼熟","打过照面","见过",
+    "忘记","忘掉","遗忘","记不住","想不起来","忘了",
+    "记住","记得","铭记","牢记","记在心里","记着",
+    "告诉","通知","告知","提醒","打招呼","说一声",
+    "商量","讨论","商议","合计","合计合计","聊聊",
+    "帮助","帮忙","协助","搭把手","帮一把","照顾",
+    "保护","保卫","维护","守护","看护","照看","照应",
+    "照顾","照看","照料","看护","伺候","服侍","伺弄",
+    "休息","歇息","歇歇","歇会儿","歇口气","喘口气",
+    "起床","起来","起身","爬起来","醒来了","起来了",
+    "睡觉","睡着","入睡","打瞌睡","犯困","困了",
+    "吃饭","用餐","进食","吃东西","填饱肚子","开饭",
+    "喝水","喝茶","喝汤","饮","品","小酌","干杯",
+    "做饭","烧菜","炒菜","煮饭","蒸饭","炖汤","煲汤",
+    "洗衣","洗衣服","洗涮","搓洗","漂洗","晾衣服",
+    "扫地","拖地","擦地","打扫","收拾","整理","归置",
+    "出门","出去","外出","出去走走","出去转转","下楼",
+    "回家","回去","回来","回去了","到家了","回家了",
+    "上班","工作","干活","出工","去单位","去公司",
+    "下班","收工","下工","放工","收班","歇班",
+    "上学","上课","去学校","去读书","去念书","去学堂",
+    "放学","下课","下学","放了","下课了","放学了",
+    "走路","步行","走道","迈步","溜达","散步","逛街",
+    "坐车","乘车","搭车","打车","叫车","打的","叫出租",
+    "开车","驾车","骑车","骑摩托","骑自行车","骑电动车",
+    "买东西","购物","逛街","逛超市","逛商场","采购",
+    "花钱","消费","付款","买单","结账","付钱","掏钱",
+    "赚钱","挣钱","打工","赚钱养家","赚钱糊口","赚钱过活",
+    "存钱","攒钱","积蓄","存银行","存起来","积攒",
+    "看病","就医","看医生","去医院","挂号","就诊",
+    "吃药","服药","用药","喝药","涂药","上药","抹药",
+    "打电话","打手机","打座机","拨电话","拨打","呼叫",
+    "发短信","发信息","发消息","发微信","回信息","回消息",
+    "上网","浏览网页","看网页","刷手机","刷视频","看视频",
+    "看电视","看剧","追剧","看电影","看节目","看综艺",
+    "听歌","听音乐","听戏","听广播","听评书","听故事",
+    "唱歌","唱戏","唱K","哼歌","哼曲","唱两句",
+    "跳舞","跳广场舞","翩翩起舞","扭秧歌","跳交际舞",
+    "打球","打篮球","踢足球","打羽毛球","打乒乓球","打网球",
+    "游泳","游水","戏水","划水","潜水","泡在水里",
+    "爬山","登山","上山","爬坡","翻山越岭","爬台阶",
+    "钓鱼","垂钓","钓虾","钓螃蟹","甩竿","下钩",
+    "种花","种菜","种树","种地","种庄稼","种粮食",
+    "浇花","浇菜","浇水","灌溉","喷水","洒水",
+    "喂鸡","喂猪","喂狗","喂猫","喂鱼","喂鸭",
+    "养鸡","养猪","养狗","养猫","养鱼","养花",
+    "读书","看书","阅读","读报","看报","翻书",
+    "写字","写信","写作业","写文章","写报告","记笔记",
+    "画画","绘画","涂鸦","素描","国画","油画",
+    "拍照","拍照片","拍视频","照相","留影","合影",
+    "旅行","旅游","出去玩","出去走走","出去逛逛","远游",
+    "过节","过年","过生日","庆祝","庆贺","办喜事",
+    "结婚","成亲","办婚礼","嫁","娶","办喜酒",
+    "离婚","分手","分开","离了","散了","各走各的",
+    "搬家","搬新家","迁居","乔迁","搬东西","挪窝",
+    "装修","装潢","布置","摆设","装饰","打扮",
+    "做饭","下厨","掌勺","烹饪","炒菜","炖肉",
+    "洗碗","刷碗","刷锅","洗盘子","收拾厨房","擦桌子",
+    "带孩子","看孩子","哄孩子","管孩子","照顾孩子","带娃",
+    "送孩子","接孩子","送上学","接放学","送幼儿园",
+    "去医院","去诊所","看急诊","看门诊","做检查","化验",
+    "量血压","测体温","打针","输液","抽血","拍片子",
+    "做手术","开刀","住院","出院","转院","复查",
+    "买菜","买肉","买鱼","买水果","买零食","买日用品",
+    "切菜","切肉","剁肉","择菜","洗菜","削皮",
+    "煮饭","蒸饭","炒菜","炖肉","煲汤","煮面","下饺子",
+    "洗衣服","洗床单","洗被罩","洗袜子","洗内衣","晾衣服",
+    "叠衣服","叠被子","整理房间","收拾屋子","打扫卫生",
+    "倒垃圾","扔垃圾","倒水","倒茶","倒酒","满上",
+    "开门","关门","锁门","开窗","关窗","开灯","关灯",
+    "开电视","关电视","开空调","关空调","开电脑","关电脑",
+    "充电","充话费","充电费","充水费","充煤气费",
+    "交电费","交水费","交房租","交物业费","交停车费",
+    "领工资","发工资","发奖金","领奖金","领补贴",
+    "存银行","取银行","汇款","转账","打钱","还钱",
+    "借书","还书","借东西","还东西","借工具","还工具",
+    "排队","等候","等车","等人","等一下","稍等",
+    "加油","加气","加水","充气","充电","补胎",
+    "修车","修电脑","修手机","修水管","修电器","修门",
+    "剪头发","理发","烫头发","染头发","做头发","洗头",
+    "洗澡","泡澡","冲澡","搓澡","淋浴","泡温泉",
+    "刷牙","漱口","洗脸","洗手","洗脚","剪指甲",
+    "穿衣服","脱衣服","换衣服","穿鞋","脱鞋","换鞋",
+    "戴帽子","戴口罩","戴眼镜","戴手套","戴围巾","戴耳环",
+    "系鞋带","系扣子","拉拉链","扣扣子","卷袖子","挽裤腿",
+    "打招呼","问好","点头","握手","鞠躬","行礼",
+    "请客","请吃饭","请喝茶","请喝酒","做东","请人",
+    "赴宴","参加婚礼","参加聚会","出席","到场","赴约",
+    "迟到","早退","准时","按时","提前","晚点",
+    "堵车","塞车","交通拥堵","车多","路不好走","走不动",
+    "找路","迷路","问路","导航","看地图","看路标",
+    "等红灯","过马路","走斑马线","走天桥","走地下通道",
+    "坐电梯","坐扶梯","上楼","下楼","爬楼梯","走楼梯",
+    "坐公交","坐地铁","坐火车","坐飞机","坐船","坐长途",
+    "买票","退票","改签","订票","取票","检票",
+    "安检","过安检","检票进站","候车","候机","等船",
+    "登机","上飞机","下飞机","转机","飞","降落",
+    "上车","下车","换乘","转车","倒车","中转",
+    "住酒店","住宾馆","开房间","退房","续住","换房",
+    "登记","入住","退房","查房","叫早","叫醒服务",
+    // 更多生活场景
+    "价格便宜","价格贵","打折","减价","降价","涨价","特价","促销",
+    "质量好","质量差","质量过硬","耐用","不耐用","容易坏",
+    "味道好","味道差","好吃","难吃","香","臭","甜","咸",
+    "天气好","天气差","晴天","阴天","下雨","下雪","刮风","打雷",
+    "很热","很冷","很暖和","很凉快","很潮湿","很干燥",
+    "很远","很近","很快","很慢","很高","很低","很大","很小",
+    "很多","很少","很好","很差","很强","很弱","很硬","很软",
+    "很长","很短","很宽","很窄","很深","很浅","很厚","很薄",
+    "很重","很轻","很粗","很细","很圆","很扁","很直","很弯",
+    "很忙","很闲","很累","很困","很饿","很渴","很饱","很撑",
+    "很痛","很痒","很酸","很麻","很晕","很想吐","恶心","难受",
+    "很急","很慢","很快","很准时","来得及","来不及","赶不上",
+    "很吵","很安静","很热闹","很冷清","很拥挤","很空旷",
+    "很亮","很暗","很黑","很清楚","很模糊","看不清","看不着",
+    "很好听","很难听","很悦耳","很刺耳","声音大","声音小",
+    "很好闻","很难闻","很香","很臭","有味道","没味道",
+    "很好看","很难看","很漂亮","很丑","很帅","很美","很可爱",
+    "很好玩","很难玩","很无聊","很有趣","很有意思","没意思",
+    "很好用","很难用","很方便","很麻烦","很简单","很复杂",
+    "很安全","很危险","很可靠","不可靠","信得过","信不过",
+    "很舒服","很难受","很舒服","很不舒服","很痛快","很憋屈",
+    "很放心","很担心","很安心","很不安","很踏实","很不踏实",
+    "很满意","不满意","很满足","不满足","很失望","没失望",
+    "很开心","不开心","很高兴","不高兴","很愉快","不愉快",
+    "很感激","不感激","很感谢","很感动","没感觉","无所谓",
+    "很抱歉","不抱歉","很对不起","不好意思","很过意不去",
+    "很喜欢","不喜欢","很讨厌","不讨厌","很喜欢","不太喜欢",
+    "很相信","不相信","很怀疑","不怀疑","很信任","不信任",
+    "很了解","不了解","很熟悉","不熟悉","很懂","不懂",
+    "很会","不会","很能","不能","很行","不行","可以","不可以",
+    "应该","不应该","必须","不必","需要","不需要","值得","不值得",
+]);
+
+
+
+// ============================================================
+//  状态管理
+// ============================================================
+
+let state = {
+    currentPage: 'check',
+    inputMode: 'voice',
+    // 练习
+    quizLevel: null,
+    quizQuestions: [],
+    quizIndex: 0,
+    quizCorrect: 0,
+    dailyDone: parseInt(localStorage.getItem('dailyDone') || '0'),
+    dailyCorrect: parseInt(localStorage.getItem('dailyCorrect') || '0'),
+    dailyStreak: parseInt(localStorage.getItem('dailyStreak') || '0'),
+    lastPracticeDate: localStorage.getItem('lastPracticeDate') || '',
+    // 学认字
+    learnedChars: JSON.parse(localStorage.getItem('learnedChars') || '{}'),
+    currentLearnIndex: 0,
+    learnQueue: [],
+    // 错题本
+    wrongChars: JSON.parse(localStorage.getItem('wrongChars') || '[]'),
+    // 手写（两个 Canvas 各自独立的状态）
+    writeCanvasStrokes: [],
+    lookupCanvasStrokes: [],
+    activeCanvasId: null,      // 当前正在操作的 Canvas
+    activeCanvasStrokes: null,  // 指向当前 Canvas 的 strokes 数组
+    currentStroke: [],
+    isDrawing: false,
+    // 语音
+    isRecording: false,
+    recognition: null,
+    lookupRecognition: null,
+};
+
+// 保存状态
+function saveState() {
+    localStorage.setItem('learnedChars', JSON.stringify(state.learnedChars));
+    localStorage.setItem('wrongChars', JSON.stringify(state.wrongChars));
+    localStorage.setItem('dailyDone', state.dailyDone.toString());
+    localStorage.setItem('dailyCorrect', state.dailyCorrect.toString());
+    localStorage.setItem('dailyStreak', state.dailyStreak.toString());
+    localStorage.setItem('lastPracticeDate', state.lastPracticeDate);
+}
+
+
+// ============================================================
+//  页面导航
+// ============================================================
+
+function switchPage(page) {
+    state.currentPage = page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector(`.nav-item[onclick="switchPage('${page}')"]`).classList.add('active');
+}
+
+
+// ============================================================
+//  语音识别
+// ============================================================
+
+function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.log('浏览器不支持语音识别');
+        return null;
+    }
+    const rec = new SpeechRecognition();
+    rec.lang = 'zh-CN';
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.maxAlternatives = 3;
+    return rec;
+}
+
+function startVoice() {
+    if (!navigator.onLine) {
+        showToast('⚠️ 语音识别需要网络');
+        return;
+    }
+    if (!state.recognition) {
+        state.recognition = initSpeechRecognition();
+    }
+    if (!state.recognition) {
+        showToast('⚠️ 你的浏览器不支持语音，请用Chrome浏览器');
+        return;
+    }
+
+    const btn = document.getElementById('voiceBtn');
+    const hint = document.getElementById('voiceHint');
+
+    if (state.isRecording) {
+        state.recognition.stop();
+        return;
+    }
+
+    state.isRecording = true;
+    btn.classList.add('recording');
+    btn.textContent = '⏹️';
+    hint.textContent = '正在听你说...';
+
+    state.recognition.onresult = function(event) {
+        let transcript = '';
+        let alternatives = [];
+        for (let i = 0; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+            if (event.results[i].length > 1) {
+                for (let j = 1; j < event.results[i].length; j++) {
+                    alternatives.push(event.results[i][j].transcript);
+                }
+            }
+        }
+        document.getElementById('voiceResultText').textContent = transcript;
+        document.getElementById('voiceResult').style.display = 'block';
+        hint.textContent = '识别完成，点"检查这段话"看看有没有错别字';
+
+        // 如果有替代结果，显示
+        if (alternatives.length > 0) {
+            let altHtml = '<div style="margin-top:8px; font-size:16px; color:var(--text-light);">也可能是：';
+            alternatives.forEach(alt => {
+                altHtml += `<span style="margin-left:8px; padding:4px 10px; background:var(--primary-light); border-radius:8px; cursor:pointer;" onclick="document.getElementById('voiceResultText').textContent=this.textContent">${alt}</span>`;
+            });
+            altHtml += '</div>';
+            // Append after the result text
+            const resultDiv = document.getElementById('voiceResult');
+            const existingAlt = resultDiv.querySelector('.alt-results');
+            if (existingAlt) existingAlt.remove();
+            const altDiv = document.createElement('div');
+            altDiv.className = 'alt-results';
+            altDiv.innerHTML = altHtml;
+            resultDiv.appendChild(altDiv);
+        }
+    };
+
+    state.recognition.onerror = function(event) {
+        state.isRecording = false;
+        btn.classList.remove('recording');
+        btn.textContent = '🎤';
+        if (event.error === 'no-speech') {
+            hint.textContent = '没听到声音，请再试一次';
+        } else if (event.error === 'network') {
+            hint.textContent = '⚠️ 网络连接失败，请检查网络';
+        } else {
+            hint.textContent = '识别出错了，请再试一次';
+        }
+    };
+
+    state.recognition.onend = function() {
+        state.isRecording = false;
+        btn.classList.remove('recording');
+        btn.textContent = '🎤';
+    };
+
+    state.recognition.start();
+}
+
+function speakText(text, lang) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang || 'zh-CN';
+    utterance.rate = 0.8;
+    utterance.pitch = 1;
+    if (lang === 'en-US') {
+        utterance.rate = 0.7;
+    }
+    window.speechSynthesis.speak(utterance);
+}
+
+
+// ============================================================
+//  手写识别（Canvas）
+// ============================================================
+
+function initCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    // 判断是哪个 Canvas，使用对应的 strokes 数组
+    if (canvasId === 'writeCanvas') {
+        state.activeCanvasStrokes = state.writeCanvasStrokes;
+    } else {
+        state.activeCanvasStrokes = state.lookupCanvasStrokes;
+    }
+    state.activeCanvasId = canvasId;
+
+    const ctx = canvas.getContext('2d');
+
+    // 用固定宽度初始化（避免 display:none 时宽度=0）
+    canvas.width = 600;
+    canvas.height = 400;
+    ctx.strokeStyle = '#2D2D2D';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 绑定事件（用 on 前缀避免重复绑定）
+    canvas.onpointerdown = (e) => {
+        e.preventDefault();
+        canvas.setPointerCapture(e.pointerId);
+        state.isDrawing = true;
+        state.currentStroke = [];
+        const pos = getCanvasPos(canvas, e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        state.currentStroke.push(pos);
+    };
+
+    canvas.onpointermove = (e) => {
+        e.preventDefault();
+        if (!state.isDrawing) return;
+        const pos = getCanvasPos(canvas, e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        state.currentStroke.push(pos);
+    };
+
+    canvas.onpointerup = (e) => {
+        e.preventDefault();
+        if (state.isDrawing && state.currentStroke.length > 0) {
+            state.activeCanvasStrokes.push([...state.currentStroke]);
+        }
+        state.isDrawing = false;
+    };
+
+    canvas.onpointercancel = () => {
+        state.isDrawing = false;
+    };
+}
+
+function getCanvasPos(canvas, e) {
+    const rect = canvas.getBoundingClientRect();
+    // 将屏幕坐标转换为 canvas 内部坐标
+    // 如果 canvas 不可见（rect.width=0），用固定比例
+    const scaleX = rect.width > 0 ? canvas.width / rect.width : 2;
+    const scaleY = rect.height > 0 ? canvas.height / rect.height : 2;
+    return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+    };
+}
+
+function clearCanvas() {
+    const canvas = document.getElementById('writeCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    state.writeCanvasStrokes = [];
+    state.currentStroke = [];
+    const resultDiv = document.getElementById('handwriteResult');
+    if (resultDiv) resultDiv.style.display = 'none';
+    // 清空检查结果区域
+    const checkResult = document.getElementById('checkResult');
+    if (checkResult) checkResult.style.display = 'none';
+}
+
+function clearLookupCanvas() {
+    const canvas = document.getElementById('lookupCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    state.lookupCanvasStrokes = [];
+    state.currentStroke = [];
+    document.getElementById('lookupDrawResult').innerHTML = '';
+}
+
+function undoStroke() {
+    if (state.writeCanvasStrokes.length === 0) return;
+    state.writeCanvasStrokes.pop();
+    // 重绘
+    const canvas = document.getElementById('writeCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    state.writeCanvasStrokes.forEach(stroke => {
+        if (stroke.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        stroke.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.stroke();
+    });
+}
+
+async function recognizeHandwriting() {
+    if (!navigator.onLine) {
+        showToast('⚠️ 手写识别需要网络，请检查网络连接');
+        return;
+    }
+    if (state.writeCanvasStrokes.length === 0) {
+        showToast('请先在上面的白色区域写一个字');
+        return;
+    }
+
+    showToast('🔍 正在识别...');
+
+    const canvas = document.getElementById('writeCanvas');
+    try {
+        const strokes = state.writeCanvasStrokes.map(stroke =>
+            stroke.map(p => [Math.round(p.x), Math.round(p.y)])
+        );
+
+        // 添加超时控制（10秒）
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
+        const response = await fetch(
+            'https://inputtools.google.com/request?itc=zh-t-i0-handwrit&app=translate',
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    options: 'enable_pre_space',
+                    requests: [{
+                        writing_guide: {
+                            writing_guide_width: canvas.width,
+                            writing_guide_height: canvas.height,
+                            max_strokes: 30
+                        },
+                        ink: [strokes],
+                        language: 'zh'
+                    }]
+                }),
+                signal: controller.signal
+            }
+        );
+        clearTimeout(timeout);
+
+        const data = await response.json();
+        if (data && data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1]) {
+            const candidates = data[1][0][1].slice(0, 5);
+            let html = '<div style="display:flex; flex-wrap:wrap; gap:10px;">';
+            candidates.forEach((char, i) => {
+                html += '<button class="btn ' + (i === 0 ? 'btn-primary' : 'btn-outline') + ' btn-sm" style="font-size:28px; min-width:56px;" onclick="addHandwriteChar(this.textContent)">' + char + '</button>';
+            });
+            html += '</div>';
+            html += '<p style="font-size:15px; color:var(--text-light); margin-top:8px;">点选你要的字</p>';
+
+            const resultDiv = document.getElementById('handwriteResult');
+            resultDiv.style.display = 'block';
+            document.getElementById('handwriteResultText').textContent = candidates[0];
+
+            // 显示候选字
+            const existingCandidates = resultDiv.querySelector('.hw-candidates');
+            if (existingCandidates) existingCandidates.remove();
+            const candDiv = document.createElement('div');
+            candDiv.className = 'hw-candidates';
+            candDiv.innerHTML = html;
+            resultDiv.insertBefore(candDiv, resultDiv.firstChild);
+
+            showToast('✅ 识别成功，点选正确的字');
+        } else {
+            showToast('没认出来，请写大一点、清楚一点再试');
+        }
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            showToast('⚠️ 识别超时。建议：用手机自带的手写键盘输入');
+        } else {
+            console.error('Handwriting recognition error:', e);
+            showToast('⚠️ 识别服务不可用。建议：切换到"打字"模式，用手机手写键盘输入');
+        }
+    }
+}
+
+function addHandwriteChar(char) {
+    const el = document.getElementById('handwriteResultText');
+    el.textContent += char;
+}
+
+async function lookupByHandwriting() {
+    if (!navigator.onLine) {
+        showToast('⚠️ 手写识别需要网络，请检查网络连接');
+        return;
+    }
+    if (state.lookupCanvasStrokes.length === 0) {
+        showToast('请先在上面的白色区域写一个字');
+        return;
+    }
+
+    showToast('🔍 正在识别...');
+
+    const canvas = document.getElementById('lookupCanvas');
+    try {
+        const strokes = state.lookupCanvasStrokes.map(stroke =>
+            stroke.map(p => [Math.round(p.x), Math.round(p.y)])
+        );
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
+        const response = await fetch(
+            'https://inputtools.google.com/request?itc=zh-t-i0-handwrit&app=translate',
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    options: 'enable_pre_space',
+                    requests: [{
+                        writing_guide: {
+                            writing_guide_width: canvas.width,
+                            writing_guide_height: canvas.height,
+                            max_strokes: 30
+                        },
+                        ink: [strokes],
+                        language: 'zh'
+                    }]
+                }),
+                signal: controller.signal
+            }
+        );
+        clearTimeout(timeout);
+
+        const data = await response.json();
+        if (data && data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1]) {
+            const candidates = data[1][0][1].slice(0, 5);
+            // 清空旧结果再显示新结果
+            document.getElementById('lookupDrawResult').innerHTML = '';
+            showLookupResult(candidates[0], 'lookupDrawResult');
+
+            let html = '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">';
+            candidates.forEach((char, i) => {
+                const info = PINYIN_DICT[char];
+                html += '<button class="btn btn-outline btn-sm" style="font-size:24px;" onclick="showLookupDetail(\'' + char + '\')">' + char + (info ? ' (' + info.py + ')' : '') + '</button>';
+            });
+            html += '</div>';
+            document.getElementById('lookupDrawResult').innerHTML = html + document.getElementById('lookupDrawResult').innerHTML;
+
+            showToast('✅ 识别成功');
+        } else {
+            showToast('没认出来，请写大一点、清楚一点再试');
+        }
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            showToast('⚠️ 识别超时。建议：用拼音或语音查找');
+        } else {
+            console.error('Lookup handwriting error:', e);
+            showToast('⚠️ 识别服务不可用。建议：用拼音或语音查找');
+        }
+    }
+}
+
+
+// ============================================================
+//  输入方式切换（检查页面）
+// ============================================================
+
+function switchInputMode(mode) {
+    state.inputMode = mode;
+    ['voice', 'type', 'write'].forEach(m => {
+        document.getElementById('input-' + m).style.display = m === mode ? 'block' : 'none';
+    });
+    document.querySelectorAll('#page-check .mode-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // 切换时清空旧的检查结果
+    const checkResult = document.getElementById('checkResult');
+    if (checkResult) checkResult.style.display = 'none';
+}
+
+function switchLookupMode(mode) {
+    ['pinyin', 'speak', 'draw'].forEach(m => {
+        document.getElementById('lookup-' + m).style.display = m === mode ? 'block' : 'none';
+    });
+    document.querySelectorAll('#page-lookup .mode-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // 切换时清空旧的查找结果
+    document.getElementById('lookupDetail').style.display = 'none';
+}
+
+
+// ============================================================
+//  错别字检查
+// ============================================================
+
+function checkText(sourceId) {
+    const source = document.getElementById(sourceId);
+    let text = '';
+    if (source.tagName === 'TEXTAREA' || source.tagName === 'INPUT') {
+        text = source.value;
+    } else {
+        text = source.textContent;
+    }
+
+    if (!text.trim()) {
+        showToast('请先输入或说一段话');
+        return;
+    }
+
+    const result = analyzeErrors(text);
+    displayCheckResult(text, result);
+}
+
+function analyzeErrors(text) {
+    const errors = [];
+    const seen = new Set(); // 位置去重
+
+    // ========== 第零层：已知固定错别字词组（兜底） ==========
+    const WRONG_PHRASES = [
+        ["以经", "已经", "'以经'应该是'已经'"],
+        ["在见", "再见", "'在见'应该是'再见'"],
+        ["在来", "再来", "'在来'应该是'再来'"],
+        ["现再", "现在", "'现再'应该是'现在'"],
+        ["再家", "在家", "'再家'应该是'在家'"],
+        ["再这", "在这", "'再这'应该是'在这'"],
+        ["一在", "一再", "'一在'应该是'一再'"],
+        ["做业", "作业", "'做业'应该是'作业'"],
+        ["做用", "作用", "'做用'应该是'作用'"],
+        ["工做", "工作", "'工做'应该是'工作'"],
+        ["作饭", "做饭", "'作饭'应该是'做饭'"],
+        ["作工", "做工", "'作工'应该是'做工'"],
+        ["作什么", "做什么", "'作什么'应该是'做什么'"],
+        ["已前", "以前", "'已前'应该是'以前'"],
+        ["已后", "以后", "'已后'应该是'以后'"],
+        ["已为", "以为", "'已为'应该是'以为'"],
+        ["金天", "今天", "'金天'应该是'今天'"],
+        ["名天", "明天", "'名天'应该是'明天'"],
+        ["名白", "明白", "'名白'应该是'明白'"],
+        ["名年", "明年", "'名年'应该是'明年'"],
+        ["尼说呢", "你说呢", "'尼说呢'应该是'你说呢'"],
+        ["尼好", "你好", "'尼好'应该是'你好'"],
+        ["尼们", "你们", "'尼们'应该是'你们'"],
+        ["尼的", "你的", "'尼的'应该是'你的'"],
+        ["你莱了", "你来了", "'你莱了'应该是'你来了'"],
+        ["我莱", "我来", "'我莱'应该是'我来'"],
+        ["莱了", "来了", "'莱了'应该是'来了'"],
+        ["莱这里", "来这里", "'莱这里'应该是'来这里'"],
+        ["莱自", "来自", "'莱自'应该是'来自'"],
+        ["回莱", "回来", "'回莱'应该是'回来'"],
+        ["过莱", "过来", "'过莱'应该是'过来'"],
+        ["出莱", "出来", "'出莱'应该是'出来'"],
+        ["上莱", "上来", "'上莱'应该是'上来'"],
+        ["下莱", "下来", "'下莱'应该是'下来'"],
+        ["起莱", "起来", "'起莱'应该是'起来'"],
+        ["莱到", "来到", "'莱到'应该是'来到'"],
+        ["莱不及", "来不及", "'莱不及'应该是'来不及'"],
+        ["莱得及", "来得及", "'莱得及'应该是'来得及'"],
+        ["进头", "尽头", "'进头'应该是'尽头'"],
+        ["近头", "尽头", "'近头'应该是'尽头'"],
+        ["尽前", "眼前", "'尽前'可能是'眼前'"],
+        ["以经", "已经", "'以经'应该是'已经'"],
+        ["不因该", "不应该", "'不因该'应该是'不应该'"],
+        ["应为", "因为", "'应为'可能是'因为'"],
+        ["年青", "年轻", "'年青'应该是'年轻'"],
+        ["那理", "哪里", "'那理'应该是'哪里'"],
+        ["那裡", "哪里", "'那裡'应该是'哪里'"],
+        ["这裡", "这里", "'这裡'应该是'这里'"],
+        ["报歉", "抱歉", "'报歉'应该是'抱歉'"],
+        ["抱谦", "抱歉", "'抱谦'应该是'抱歉'"],
+        ["那为", "那位", "'那为'应该是'那位'"],
+        ["向片", "相片", "'向片'应该是'相片'"],
+        ["照像", "照相", "'照像'应该是'照相'"],
+        ["刻服", "克服", "'刻服'应该是'克服'"],
+        ["克苦", "刻苦", "'克苦'应该是'刻苦'"],
+        ["坚苦", "艰苦", "'坚苦'应该是'艰苦'"],
+        ["辛福", "幸福", "'辛福'应该是'幸福'"],
+        ["报达", "报答", "'报达'应该是'报答'"],
+        ["到低", "到底", "'到低'应该是'到底'"],
+        ["带替", "代替", "'带替'应该是'代替'"],
+        ["题纲", "提纲", "'题纲'应该是'提纲'"],
+        ["解化", "变化", "'解化'可能是'变化'"],
+        ["建壮", "健壮", "'建壮'应该是'健壮'"],
+        ["防碍", "妨碍", "'防碍'应该是'妨碍'"],
+        ["包避", "包庇", "'包避'可能是'包庇'"],
+        ["情不自尽", "情不自禁", "'情不自尽'应该是'情不自禁'"],
+        ["迫不急待", "迫不及待", "'迫不急待'应该是'迫不及待'"],
+        ["走头无路", "走投无路", "'走头无路'应该是'走投无路'"],
+        ["一翻话", "一番话", "'一翻话'应该是'一番话'"],
+        ["兴高彩烈", "兴高采烈", "'兴高彩烈'应该是'兴高采烈'"],
+    ];
+
+    for (const [wrong, correct, explain] of WRONG_PHRASES) {
+        let idx = -1;
+        while ((idx = text.indexOf(wrong, idx + 1)) !== -1) {
+            const key = idx + ':' + wrong;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            // 标记这个词组中的每个字
+            for (let j = 0; j < wrong.length; j++) {
+                seen.add((idx + j) + ':' + wrong[j]);
+            }
+            errors.push({
+                position: idx,
+                wrong: wrong,
+                correct: correct,
+                explain: explain,
+                context: text.substring(Math.max(0, idx - 2), Math.min(text.length, idx + wrong.length + 2))
+            });
+        }
+    }
+
+    // ========== 核心检测：扫描所有二字组合，不在词典里的找同音字替换 ==========
+    // 超高频字保护：这些字几乎不会写错，不单独标记
+    const PROTECTED_CHARS = new Set('的一是不了人我在有他这中大来上个国和到说时要就出会也你对生能子那得于着下自之年过发后作里用道行所然家种事成方多经么去法学如都同现当没动面起看定天分还进好小部其些主样理心她本前开但因只从想实日军者意无力它与长把机十民第公此已工使情明性知全又关点正业外将两高间由问很最重并物手应战向头文体政美相见被利什等产或新己制身果加西斯月话合回特代内信表化给世位次度门任常先海通教儿原东声提立及比员解水名真论处走义各入口认条平系气题活尔更别打女变四神总何电数安少报才结反受目太量再感建务做快深商算百亲联步热乐据飞风科增议南术规基北取花严求治投己王白谈财马温古广拿计拉整容影犯调价块土效值望护希食够伤追掉春冷童探摇健穷枝慰奉庆孝徒淡碧壮猜赤旋搬辰础申苗凤方柳史费雷贺罗安常乐于傅齐康余孟黄穆尹姚汪贝明伏成宋纪祝董杜蓝季强贾路危江颜梅林钟徐夏田胡万柯管卢莫经房干应丁宣邓洪包左石吉程裴荣翁羊惠封段富弓侯秋宫宁甘厉祖武符刘景龙叶幸黎印怀蒲索赖卓蒙池乔阴闻谭贡姬冉桑桂牛寿通边燕冀农庄柴阎连习艾容易廖居衡步满文广聂冷辛简饶曾沙养须丰相查后红游权盖益公'.split(''));
+
+    for (let i = 0; i < text.length - 1; i++) {
+        const c1 = text[i];
+        const c2 = text[i + 1];
+
+        // 跳过标点和空格
+        if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c1)) continue;
+        if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c2)) continue;
+
+        const bigram = c1 + c2;
+
+        // 如果这个词组存在于词典，没问题
+        if (VALID_WORDS.has(bigram)) continue;
+
+        // 如果两个字都是超高频字，大概率不是错别字（只是不在词典的句子组合）
+        if (PROTECTED_CHARS.has(c1) && PROTECTED_CHARS.has(c2)) continue;
+
+        // 这个词组不在词典里！尝试找同音字替换
+        // 尝试替换第一个字（只有当它不是受保护的超高频字时）
+        if (!seen.has(i + ':' + c1) && !PROTECTED_CHARS.has(c1)) {
+            const fix1 = findHomophoneFix(c1, c2, false);
+            if (fix1) {
+                seen.add(i + ':' + c1);
+                errors.push({
+                    position: i,
+                    wrong: c1,
+                    correct: fix1.char,
+                    explain: '"' + bigram + '"不是常用词，您可能想写"' + fix1.word + '"（' + fix1.pinyin + '）',
+                    context: text.substring(Math.max(0, i - 1), Math.min(text.length, i + 3))
+                });
+                continue;
+            }
+        }
+
+        // 尝试替换第二个字（只有当它不是受保护的超高频字时）
+        if (!seen.has((i + 1) + ':' + c2) && !PROTECTED_CHARS.has(c2)) {
+            const fix2 = findHomophoneFix(c2, c1, true);
+            if (fix2) {
+                seen.add((i + 1) + ':' + c2);
+                errors.push({
+                    position: i + 1,
+                    wrong: c2,
+                    correct: fix2.char,
+                    explain: '"' + bigram + '"不是常用词，您可能想写"' + fix2.word + '"（' + fix2.pinyin + '）',
+                    context: text.substring(Math.max(0, i - 1), Math.min(text.length, i + 3))
+                });
+                continue;
+            }
+        }
+    }
+
+    // ========== 第三层：CONFUSABLES 易混字检查 ==========
+    for (const [correct, wrong, explain] of CONFUSABLES) {
+        let idx = -1;
+        while ((idx = text.indexOf(wrong, idx + 1)) !== -1) {
+            const key = idx + ':' + wrong;
+            if (seen.has(key)) continue;
+
+            const context = text.substring(Math.max(0, idx - 2), Math.min(text.length, idx + 3));
+            if (shouldUseCorrect(context, wrong, correct)) {
+                seen.add(key);
+                errors.push({
+                    position: idx,
+                    wrong: wrong,
+                    correct: correct,
+                    explain: explain,
+                    context: context
+                });
+            }
+        }
+    }
+
+    return errors.sort((a, b) => a.position - b.position);
+}
+
+// 查找同音字替换方案（更保守：只用同音字+形近字，不用全词表遍历）
+function findHomophoneFix(badChar, neighbor, isSecond) {
+    const badPinyin = getPinyinBase(badChar);
+    if (!badPinyin) return null;
+
+    // 收集候选字：同音字 + 形近字
+    const candidates = new Set();
+
+    // 同音字
+    for (const [char, info] of Object.entries(PINYIN_DICT)) {
+        if (char === badChar) continue;
+        const py = getPinyinBase(char);
+        if (py === badPinyin) candidates.add(char);
+        else if (py && isSimilarPinyin(py, badPinyin)) candidates.add(char);
+    }
+
+    // 形近字
+    for (const [c, w] of CONFUSABLES) {
+        if (w === badChar) candidates.add(c);
+        if (c === badChar) candidates.add(w);
+    }
+
+    // 检查每个候选
+    for (const candidate of candidates) {
+        let testWord;
+        if (isSecond) {
+            testWord = neighbor + candidate;
+        } else {
+            testWord = candidate + neighbor;
+        }
+
+        if (VALID_WORDS.has(testWord)) {
+            return {
+                char: candidate,
+                word: testWord,
+                pinyin: getPinyinFull(candidate)
+            };
+        }
+    }
+
+    return null;
+}
+
+// 获取字的拼音基础形式（去掉声调符号）
+function getPinyinBase(char) {
+    const info = PINYIN_DICT[char];
+    if (!info) return null;
+    // 去掉声调：ā→a, é→e, ǐ→i, ù→u, ǖ→v
+    return info.py.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ü/g, 'v');
+}
+
+// 获取完整拼音（带声调）
+function getPinyinFull(char) {
+    const info = PINYIN_DICT[char];
+    return info ? info.py : '';
+}
+
+// 判断两个拼音是否相近（声母相同或韵母相同）
+function isSimilarPinyin(p1, p2) {
+    if (!p1 || !p2) return false;
+    if (p1 === p2) return true;
+    // 简化判断：前2个字母相同
+    if (p1.length >= 2 && p2.length >= 2 && p1.substring(0, 2) === p2.substring(0, 2)) return true;
+    // 声母相同
+    const initials = ['zh','ch','sh','b','p','m','f','d','t','n','l','g','k','h','j','q','x','z','c','s','r','y','w'];
+    let i1 = '', i2 = '';
+    for (const ini of initials) {
+        if (p1.startsWith(ini)) i1 = ini;
+        if (p2.startsWith(ini)) i2 = ini;
+    }
+    if (i1 && i1 === i2) return true;
+    return false;
+}
+
+function shouldUseCorrect(context, wrong, correct) {
+    // 已/以
+    if (wrong === '以' && correct === '已') {
+        if (/以经/.test(context)) return true;
+    }
+    if (wrong === '已' && correct === '以') {
+        if (/已前/.test(context) || /已为/.test(context) || /已后/.test(context)) return true;
+    }
+    // 在/再
+    if (wrong === '再' && correct === '在') {
+        if (/再家/.test(context) || /再这/.test(context) || /现再/.test(context)) return true;
+    }
+    if (wrong === '在' && correct === '再') {
+        if (/在见/.test(context) || /在来/.test(context) || /一在/.test(context)) return true;
+    }
+    // 做/作
+    if (wrong === '作' && correct === '做') {
+        if (/作饭/.test(context) || /作工/.test(context) || /作什么/.test(context)) return true;
+    }
+    if (wrong === '做' && correct === '作') {
+        if (/做业/.test(context) || /做用/.test(context) || /工做/.test(context)) return true;
+    }
+    // 买/卖
+    if (wrong === '卖' && correct === '买') {
+        if (/卖东西/.test(context) && /我要卖/.test(context)) return true;
+    }
+    // 他/她 — 无法从文本判断，不误报
+    if ((wrong === '她' && correct === '他') || (wrong === '他' && correct === '她')) {
+        return false;
+    }
+    // 的/地/得 — 太复杂容易误报，暂时跳过
+    if (['的', '地', '得'].includes(wrong) || ['的', '地', '得'].includes(correct)) {
+        return false;
+    }
+
+    // 默认不标记（避免误报）
+    return false;
+}
+
+function displayCheckResult(text, errors) {
+    const resultDiv = document.getElementById('checkResult');
+    const contentDiv = document.getElementById('checkResultContent');
+    const correctionsDiv = document.getElementById('checkCorrections');
+
+    resultDiv.style.display = 'block';
+
+    // 始终先显示用户输入的原文
+    let headerHtml = `
+        <div style="margin-bottom:16px;">
+            <div style="font-size:16px; color:var(--text-light); margin-bottom:6px;">📝 你输入的是：</div>
+            <div class="result-text" style="background:#fff; border:2px solid var(--border);">${text}</div>
+        </div>
+    `;
+
+    if (errors.length === 0) {
+        const dialectHints = ['嘞','哈','喃','噻','咯','嘛','哦','诶','嘎'];
+        const hasDialect = dialectHints.some(d => text.includes(d));
+        const hintMsg = hasDialect
+            ? '没有发现常见错别字（方言表达可能不在检查范围内）'
+            : '没有发现常见错别字';
+
+        contentDiv.innerHTML = headerHtml + `
+            <div style="text-align:center; padding:16px;">
+                <div style="font-size:40px; margin-bottom:8px;">${hasDialect ? '💬' : '✅'}</div>
+                <div style="font-size:20px; color:${hasDialect ? 'var(--warning)' : 'var(--success)'}; font-weight:600;">${hintMsg}</div>
+            </div>
+        `;
+        correctionsDiv.innerHTML = '';
+        speakText(hasDialect ? '没有发现常见错别字，但可能包含方言表达' : '检查完了，没有发现错别字');
+        return;
+    }
+
+    // 高亮显示原文（支持多字词组级别的错误）
+    let highlighted = text;
+    const sortedErrors = [...errors].sort((a, b) => b.position - a.position);
+    sortedErrors.forEach(err => {
+        const errLen = err.wrong.length; // 可能是1个字或2个字的词组
+        highlighted = highlighted.substring(0, err.position) +
+            '<span class="error-char">' + err.wrong + '</span>' +
+            highlighted.substring(err.position + errLen);
+    });
+
+    contentDiv.innerHTML = `
+        <div style="font-size:18px; color:var(--error); margin-bottom:8px;">
+            发现 <strong>${errors.length}</strong> 个可能的错别字
+        </div>
+        <div class="result-text">${highlighted}</div>
+    `;
+
+    // 显示每个纠正
+    let correctionsHtml = '';
+    errors.forEach((err, i) => {
+        const isPhrase = err.correct.length > 1;
+        const firstCharInfo = PINYIN_DICT[err.correct[0]];
+        const pinyin = isPhrase
+            ? err.correct.split('').map(c => { const info = PINYIN_DICT[c]; return info ? info.py : ''; }).join('')
+            : (firstCharInfo ? firstCharInfo.py : '');
+        const btnText = isPhrase ? '📖 学一下这个词' : '📖 学一下这个字';
+        const btnAction = isPhrase ? `learnPhrase('${err.correct}')` : `learnChar('${err.correct}')`;
+        correctionsHtml += `
+            <div class="correction-card">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <span class="wrong">${err.wrong}</span>
+                    <span style="font-size:24px;">→</span>
+                    <span class="right">${err.correct}</span>
+                    ${pinyin ? '<span style="font-size:18px; color:var(--primary);">(' + pinyin + ')</span>' : ''}
+                    <button class="btn btn-outline btn-sm" style="padding:6px 12px; min-height:36px; font-size:16px;" onclick="speakText('${err.correct}', 'zh-CN')">🔊 听</button>
+                </div>
+                <div class="explain">${err.explain}</div>
+                <button class="btn btn-outline btn-sm" style="margin-top:10px; padding:8px 16px; min-height:40px; font-size:15px;" onclick="${btnAction}">
+                    ${btnText}
+                </button>
+            </div>
+        `;
+    });
+
+    // 英文附带
+    const wrongChars = errors.map(e => e.wrong).join('');
+    const enWords = [];
+    for (const [word, info] of Object.entries(WORD_EN)) {
+        for (const err of errors) {
+            if (word.includes(err.correct) || word.includes(err.wrong)) {
+                enWords.push({ word, ...info });
+            }
+        }
+    }
+    if (enWords.length > 0) {
+        correctionsHtml += '<div style="margin-top:16px;"><div style="font-size:16px; color:var(--text-light); margin-bottom:8px;">🌍 相关英文</div>';
+        enWords.forEach(w => {
+            correctionsHtml += `<span class="en-word" onclick="speakText('${w.en}', 'en-US')">${w.emoji} ${w.word} = ${w.en} <span class="speaker">🔊</span></span>`;
+        });
+        correctionsHtml += '</div>';
+    }
+
+    correctionsDiv.innerHTML = correctionsHtml;
+
+    // 语音播报纠错
+    let speakMsg = `发现了${errors.length}个可能的错别字。`;
+    errors.forEach(err => {
+        speakMsg += `${err.wrong}可能是${err.correct}。${err.explain}。`;
+    });
+    speakText(speakMsg);
+
+    // 记录到错题本
+    errors.forEach(err => {
+        if (!state.wrongChars.includes(err.correct)) {
+            state.wrongChars.push(err.correct);
+        }
+    });
+    saveState();
+}
+
+
+// ============================================================
+//  练习系统
+// ============================================================
+
+function startPractice(level) {
+    state.quizLevel = level;
+    state.quizIndex = 0;
+    state.quizCorrect = 0;
+
+    // 检查每日日期，重置计数
+    const today = new Date().toDateString();
+    if (state.lastPracticeDate !== today) {
+        state.dailyDone = 0;
+        state.dailyCorrect = 0;
+        if (isYesterday(state.lastPracticeDate)) {
+            state.dailyStreak += 1;
+        } else if (state.lastPracticeDate !== '') {
+            state.dailyStreak = 0;
+        }
+        state.lastPracticeDate = today;
+        saveState();
+    }
+
+    if (level === 'review') {
+        state.quizQuestions = generateReviewQuestions();
+    } else if (level === 'english') {
+        state.quizQuestions = generateEnglishQuestions();
+    } else {
+        state.quizQuestions = generateQuestions(level);
+    }
+
+    if (state.quizQuestions.length === 0) {
+        showToast('暂时没有题目，先去"学认字"积累一些吧');
+        return;
+    }
+
+    document.getElementById('practiceStart').style.display = 'none';
+    document.getElementById('quizCard').style.display = 'block';
+    showQuestion();
+}
+
+function generateQuestions(level) {
+    const questions = [];
+    const allChars = Object.keys(PINYIN_DICT);
+    const shuffled = shuffle([...allChars]);
+
+    if (level === 'easy') {
+        // 简单题：从常见字中出题
+        const easyChars = shuffled.slice(0, 20);
+        for (let i = 0; i < Math.min(10, easyChars.length); i++) {
+            const char = easyChars[i];
+            const info = PINYIN_DICT[char];
+            // 看字选拼音
+            questions.push({
+                type: 'pinyin',
+                question: `"${char}" 的拼音是什么？`,
+                answer: info.py,
+                options: shuffle([info.py, ...getRandomPinyins(info.py, 3)]),
+                char: char,
+                en: info.en
+            });
+        }
+    } else if (level === 'medium') {
+        // 中等题：易混字辨析
+        const confusablePairs = shuffle([...CONFUSABLES]).slice(0, 10);
+        for (const [correct, wrong, explain] of confusablePairs) {
+            questions.push({
+                type: 'confusable',
+                question: '下面哪个字是正确的？',
+                answer: correct,
+                options: shuffle([correct, wrong]),
+                explain: explain,
+                char: correct
+            });
+        }
+    }
+
+    return shuffle(questions).slice(0, 10);
+}
+
+function generateReviewQuestions() {
+    if (state.wrongChars.length === 0) return [];
+
+    const questions = [];
+    const chars = shuffle([...state.wrongChars]).slice(0, 10);
+
+    for (const char of chars) {
+        const info = PINYIN_DICT[char];
+        if (info) {
+            questions.push({
+                type: 'pinyin',
+                question: `"${char}" 的拼音是什么？`,
+                answer: info.py,
+                options: shuffle([info.py, ...getRandomPinyins(info.py, 3)]),
+                char: char,
+                en: info.en
+            });
+        } else {
+            // 找到和这个字相关的易混字
+            const pair = CONFUSABLES.find(c => c[0] === char || c[1] === char);
+            if (pair) {
+                questions.push({
+                    type: 'confusable',
+                    question: `哪个写法是对的？\n${pair[2]}`,
+                    answer: pair[0],
+                    options: shuffle([pair[0], pair[1]]),
+                    explain: pair[2],
+                    char: pair[0]
+                });
+            }
+        }
+    }
+    return questions.slice(0, 10);
+}
+
+function generateEnglishQuestions() {
+    const questions = [];
+    const entries = shuffle(Object.entries(WORD_EN)).slice(0, 10);
+
+    for (const [word, info] of entries) {
+        const wrongOptions = shuffle(Object.values(WORD_EN).filter(v => v.en !== info.en)).slice(0, 3);
+        questions.push({
+            type: 'english',
+            question: `${info.emoji} "${word}" 的英文是什么？`,
+            answer: info.en,
+            options: shuffle([info.en, ...wrongOptions.map(w => w.en)]),
+            word: word,
+            emoji: info.emoji
+        });
+    }
+    return questions.slice(0, 10);
+}
+
+function showQuestion() {
+    const q = state.quizQuestions[state.quizIndex];
+    if (!q) {
+        finishPractice();
+        return;
+    }
+
+    document.getElementById('quizProgress').textContent = `第 ${state.quizIndex + 1} / ${state.quizQuestions.length} 题`;
+    document.getElementById('quizQuestion').textContent = q.question;
+    document.getElementById('quizFeedback').style.display = 'none';
+    document.getElementById('nextBtn').style.display = 'none';
+    document.getElementById('quizEnglish').innerHTML = '';
+
+    const optionsDiv = document.getElementById('quizOptions');
+    optionsDiv.innerHTML = '';
+
+    q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option';
+        btn.textContent = opt;
+        btn.onclick = () => answerQuestion(btn, opt, q);
+        optionsDiv.appendChild(btn);
+    });
+
+    // 语音读题
+    speakText(q.question.replace(/\n/g, '，'));
+}
+
+function answerQuestion(btn, answer, question) {
+    const isCorrect = answer === question.answer;
+    const feedbackDiv = document.getElementById('quizFeedback');
+
+    // 禁用所有选项
+    document.querySelectorAll('.quiz-option').forEach(b => {
+        b.onclick = null;
+        if (b.textContent === question.answer) {
+            b.classList.add('correct');
+        }
+    });
+
+    if (isCorrect) {
+        btn.classList.add('correct');
+        feedbackDiv.className = 'quiz-feedback correct';
+        feedbackDiv.textContent = '✅ 答对了！真棒！';
+        state.quizCorrect++;
+        state.dailyCorrect++;
+        speakText('答对了！真棒！');
+        // 从错题本移除
+        const idx = state.wrongChars.indexOf(question.char);
+        if (idx > -1) state.wrongChars.splice(idx, 1);
+    } else {
+        btn.classList.add('wrong');
+        feedbackDiv.className = 'quiz-feedback wrong';
+        feedbackDiv.textContent = `❌ 不对哦，正确答案是：${question.answer}`;
+        speakText(`不对哦，正确答案是${question.answer}`);
+        // 加入错题本
+        if (question.char && !state.wrongChars.includes(question.char)) {
+            state.wrongChars.push(question.char);
+        }
+    }
+
+    feedbackDiv.style.display = 'block';
+
+    // 显示英文解释
+    if (question.en) {
+        document.getElementById('quizEnglish').innerHTML = `
+            <span class="en-word" onclick="speakText('${question.en}', 'en-US')">
+                ${question.emoji || ''} ${question.en} <span class="speaker">🔊</span>
+            </span>
+        `;
+    }
+
+    state.dailyDone++;
+    saveState();
+    updateDailyStats();
+
+    document.getElementById('nextBtn').style.display = 'block';
+}
+
+function nextQuestion() {
+    state.quizIndex++;
+    showQuestion();
+}
+
+function finishPractice() {
+    document.getElementById('quizCard').style.display = 'none';
+    document.getElementById('practiceStart').style.display = 'block';
+
+    const total = state.quizQuestions.length;
+    const correct = state.quizCorrect;
+    const percent = Math.round((correct / total) * 100);
+
+    let emoji, msg;
+    if (percent >= 90) { emoji = '🌟'; msg = '太厉害了！'; }
+    else if (percent >= 70) { emoji = '👍'; msg = '做得不错！'; }
+    else if (percent >= 50) { emoji = '💪'; msg = '继续加油！'; }
+    else { emoji = '📖'; msg = '多练练就好了！'; }
+
+    showToast(`${emoji} ${correct}/${total} 正确 — ${msg}`);
+    speakText(`练习结束，答对了${correct}题，共${total}题。${msg}`);
+    updateDailyStats();
+}
+
+function updateDailyStats() {
+    document.getElementById('dailyDone').textContent = state.dailyDone;
+    document.getElementById('dailyCorrect').textContent = state.dailyCorrect;
+    document.getElementById('dailyStreak').textContent = state.dailyStreak;
+    document.getElementById('dailyFill').style.width = `${Math.min(100, (state.dailyDone / 10) * 100)}%`;
+}
+
+
+// ============================================================
+//  查字功能
+// ============================================================
+
+// 去掉拼音声调符号的辅助函数
+function stripTone(pinyin) {
+    if (!pinyin) return '';
+    return pinyin.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ü/g, 'v');
+}
+
+// 通过手写输入框查找字
+function lookupByDrawInput() {
+    const input = document.getElementById('drawInput').value.trim();
+    if (!input) {
+        showToast('请先用手写键盘写一个字');
+        return;
+    }
+    const char = input.charAt(0);
+    showLookupDetail(char);
+    document.getElementById('drawInput').value = '';
+}
+
+function lookupByPinyin() {
+    const input = document.getElementById('pinyinInput').value.trim().toLowerCase();
+    const resultsDiv = document.getElementById('pinyinResults');
+
+    if (!input) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+
+    const inputClean = stripTone(input);
+
+    const matches = [];
+    for (const [char, info] of Object.entries(PINYIN_DICT)) {
+        const pyClean = stripTone(info.py);
+        if (pyClean.startsWith(inputClean) || pyClean === inputClean) {
+            matches.push({ char, ...info });
+        }
+    }
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = '<p style="color:var(--text-light); font-size:18px;">没有找到，换个拼音试试</p>';
+        return;
+    }
+
+    // 按拼音精确度排序：完全匹配的排前面
+    matches.sort((a, b) => {
+        const aClean = stripTone(a.py);
+        const bClean = stripTone(b.py);
+        const aExact = aClean === inputClean ? 0 : 1;
+        const bExact = bClean === inputClean ? 0 : 1;
+        if (aExact !== bExact) return aExact - bExact;
+        return aClean.localeCompare(bClean);
+    });
+
+    let html = '<div style="font-size:15px; color:var(--text-light); margin-bottom:10px;">找到 ' + matches.length + ' 个字</div>';
+    html += '<div style="display:flex; flex-wrap:wrap; gap:10px;">';
+    matches.slice(0, 30).forEach(m => {
+        html += `
+            <button class="btn btn-outline" style="font-size:32px; padding:16px 24px; display:flex; flex-direction:column; align-items:center; min-width:80px;" onclick="showLookupDetail('${m.char}')">
+                ${m.char}
+                <span style="font-size:14px; color:var(--text-light);">${m.py}</span>
+            </button>
+        `;
+    });
+    html += '</div>';
+    if (matches.length > 30) {
+        html += `<div style="font-size:15px; color:var(--text-light); margin-top:8px;">还有 ${matches.length - 30} 个字，请输入更精确的拼音</div>`;
+    }
+    resultsDiv.innerHTML = html;
+}
+
+function showLookupDetail(char) {
+    const info = PINYIN_DICT[char];
+    if (!info) {
+        showToast('这个字暂时没有收录');
+        return;
+    }
+
+    const detailDiv = document.getElementById('lookupDetail');
+    detailDiv.style.display = 'block';
+
+    let html = `
+        <div class="char-card">
+            <div class="big-char">${char}</div>
+            <div class="pinyin">${info.py}</div>
+            <div style="margin-top:12px;">
+                <button class="btn btn-outline btn-sm" onclick="speakText('${char}', 'zh-CN')">🔊 听中文</button>
+            </div>
+    `;
+
+    if (info.en) {
+        html += `
+            <div class="en-translation">
+                <span class="en-word" onclick="speakText('${info.en}', 'en-US')">
+                    ${info.emoji || ''} ${info.en} <span class="speaker">🔊</span>
+                </span>
+            </div>
+        `;
+    }
+
+    if (info.words && info.words.length > 0) {
+        html += `<div class="lookup-words">`;
+        info.words.forEach(w => {
+            const wInfo = WORD_EN[w];
+            html += `<span>${w}</span>`;
+            if (wInfo) {
+                html += `<span class="en-word" onclick="speakText('${wInfo.en}', 'en-US')" style="font-size:15px;">${wInfo.emoji} ${wInfo.en} 🔊</span>`;
+            }
+        });
+        html += `</div>`;
+    }
+
+    html += `
+            <div style="margin-top:16px;">
+                <button class="btn btn-primary btn-sm" onclick="learnChar('${char}')">📖 学一下这个字</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('lookupDetailContent').innerHTML = html;
+    speakText(`${char}，${info.py}，${info.en || ''}`);
+}
+
+function showLookupResult(char, targetDivId) {
+    const info = PINYIN_DICT[char];
+    if (!info) {
+        document.getElementById(targetDivId).innerHTML = `<p style="font-size:20px;">识别为：<strong style="font-size:36px;">${char}</strong>（暂无详细信息）</p>`;
+        return;
+    }
+
+    let html = `
+        <div class="lookup-result">
+            <div class="lookup-char">${char}</div>
+            <div class="lookup-pinyin">${info.py}</div>
+    `;
+    if (info.en) {
+        html += `<div style="text-align:center; margin-top:8px;">
+            <span class="en-word" onclick="speakText('${info.en}', 'en-US')">${info.emoji || ''} ${info.en} <span class="speaker">🔊</span></span>
+        </div>`;
+    }
+    html += `</div>`;
+    document.getElementById(targetDivId).innerHTML = html;
+}
+
+function startLookupVoice() {
+    if (!navigator.onLine) {
+        showToast('⚠️ 语音识别需要网络');
+        return;
+    }
+
+    if (!state.lookupRecognition) {
+        state.lookupRecognition = initSpeechRecognition();
+    }
+    if (!state.lookupRecognition) {
+        showToast('⚠️ 你的浏览器不支持语音，请用Chrome浏览器');
+        return;
+    }
+
+    const btn = document.getElementById('lookupVoiceBtn');
+    const hint = document.getElementById('lookupVoiceHint');
+
+    if (state.isRecording) {
+        state.lookupRecognition.stop();
+        return;
+    }
+
+    state.isRecording = true;
+    btn.classList.add('recording');
+    hint.textContent = '正在听...';
+
+    state.lookupRecognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        hint.textContent = `听到：${transcript}`;
+
+        // 尝试解析（如"口天吴"、"木子李"）
+        const result = parseCharDescription(transcript);
+        if (result) {
+            showLookupResult(result, 'lookupVoiceResult');
+        } else {
+            // 直接作为拼音或文字查询
+            document.getElementById('pinyinInput').value = transcript;
+            document.getElementById('pinyinResults').innerHTML = '';
+            // 尝试直接匹配
+            const char = transcript.charAt(transcript.length - 1);
+            if (PINYIN_DICT[char]) {
+                showLookupDetail(char);
+            } else {
+                document.getElementById('lookupVoiceResult').innerHTML = `
+                    <p style="font-size:18px; color:var(--text-light);">
+                        听到"${transcript}"，请试试用拼音查一查
+                    </p>
+                `;
+            }
+        }
+    };
+
+    state.lookupRecognition.onerror = function() {
+        state.isRecording = false;
+        btn.classList.remove('recording');
+        hint.textContent = '没听清，请再试一次';
+    };
+
+    state.lookupRecognition.onend = function() {
+        state.isRecording = false;
+        btn.classList.remove('recording');
+    };
+
+    state.lookupRecognition.start();
+}
+
+function parseCharDescription(text) {
+    // 解析"口天吴"、"木子李"这类描述
+    // 格式：偏旁 + 部件 + 目标字
+    const patterns = [
+        { parts: ['口', '天'], result: '吴' },
+        { parts: ['木', '子'], result: '李' },
+        { parts: ['弓', '长'], result: '张' },
+        { parts: ['立', '早'], result: '章' },
+        { parts: ['双', '木'], result: '林' },
+        { parts: ['三', '点', '水'], result: '江' },
+        { parts: ['言', '午'], result: '许' },
+        { parts: ['双', '人'], result: '徐' },
+        { parts: ['耳', '东'], result: '陈' },
+        { parts: ['文', '刀'], result: '刘' },
+        { parts: ['草', '头'], result: '花' },
+        { parts: ['宝', '盖'], result: '宝' },
+        { parts: ['走', '之'], result: '这' },
+    ];
+
+    for (const p of patterns) {
+        if (p.parts.every(part => text.includes(part))) {
+            return p.result;
+        }
+    }
+    return null;
+}
+
+
+// ============================================================
+//  学认字
+// ============================================================
+
+function startLearning() {
+    // 生成学习队列：先学没学过的，再复习学过但不太熟的
+    const allChars = Object.keys(PINYIN_DICT);
+    const newChars = allChars.filter(c => !state.learnedChars[c]);
+    const reviewChars = allChars.filter(c => state.learnedChars[c] && state.learnedChars[c].level < 3);
+
+    state.learnQueue = [
+        ...shuffle(newChars).slice(0, 5),
+        ...shuffle(reviewChars).slice(0, 2)
+    ];
+
+    if (state.learnQueue.length === 0) {
+        showToast('🎉 恭喜！常用字都学完了！');
+        return;
+    }
+
+    state.currentLearnIndex = 0;
+    document.getElementById('learnStart').style.display = 'none';
+    document.getElementById('learnCard').style.display = 'block';
+    showLearnCard();
+}
+
+function showLearnCard() {
+    const char = state.learnQueue[state.currentLearnIndex];
+    if (!char) {
+        finishLearning();
+        return;
+    }
+
+    const info = PINYIN_DICT[char];
+    document.getElementById('learnChar').textContent = char;
+    document.getElementById('learnPinyin').textContent = info ? info.py : '';
+    document.getElementById('learnMeaning').textContent = info ? (info.words || []).join('、') : '';
+
+    // 英文
+    const enDiv = document.getElementById('learnEnglish');
+    if (info && info.en) {
+        enDiv.innerHTML = `<span class="en-word" onclick="speakText('${info.en}', 'en-US')">${info.emoji || ''} ${info.en} <span class="speaker">🔊</span></span>`;
+    } else {
+        enDiv.innerHTML = '';
+    }
+
+    // 读出这个字
+    setTimeout(() => {
+        speakText(`${char}，${info ? info.py : ''}`);
+    }, 500);
+}
+
+function speakChar() {
+    const char = document.getElementById('learnChar').textContent;
+    const info = PINYIN_DICT[char];
+    speakText(`${char}，${info ? info.py : ''}，${info ? info.en : ''}`);
+}
+
+function markChar(level) {
+    const char = state.learnQueue[state.currentLearnIndex];
+    if (!char) return;
+
+    if (!state.learnedChars[char]) {
+        state.learnedChars[char] = { level: 0, count: 0 };
+    }
+
+    if (level === 'easy') {
+        state.learnedChars[char].level += 1;
+        state.learnedChars[char].count += 1;
+        // 从错题本移除
+        const idx = state.wrongChars.indexOf(char);
+        if (idx > -1) state.wrongChars.splice(idx, 1);
+    } else {
+        state.learnedChars[char].level = Math.max(0, state.learnedChars[char].level - 1);
+        state.learnedChars[char].count += 1;
+        // 加入错题本
+        if (!state.wrongChars.includes(char)) {
+            state.wrongChars.push(char);
+        }
+    }
+
+    saveState();
+    updateLearnStats();
+
+    state.currentLearnIndex++;
+    showLearnCard();
+}
+
+function learnChar(char) {
+    const info = PINYIN_DICT[char];
+    if (!info) {
+        showToast('暂时没有这个字的信息');
+        return;
+    }
+
+    // 弹出学习卡（使用Toast方式显示）
+    const msg = `${char}（${info.py}）${info.en || ''}`;
+    showToast(msg);
+    speakText(`${char}，${info.py}，${info.en || ''}`);
+
+    // 记录学习
+    if (!state.learnedChars[char]) {
+        state.learnedChars[char] = { level: 0, count: 0 };
+    }
+    state.learnedChars[char].count += 1;
+    saveState();
+}
+
+// 学习词组（逐字展示）
+function learnPhrase(phrase) {
+    if (!phrase || phrase.length === 0) return;
+    let msg = phrase + '：';
+    phrase.split('').forEach(c => {
+        const info = PINYIN_DICT[c];
+        if (info) msg += c + '(' + info.py + ') ';
+    });
+    showToast(msg);
+    speakText(msg);
+    // 逐字记录学习
+    phrase.split('').forEach(c => {
+        if (!state.learnedChars[c]) {
+            state.learnedChars[c] = { level: 0, count: 0 };
+        }
+        state.learnedChars[c].count += 1;
+    });
+    saveState();
+}
+
+function finishLearning() {
+    document.getElementById('learnCard').style.display = 'none';
+    document.getElementById('learnStart').style.display = 'block';
+    showToast('🎉 今天的学习完成了！');
+    speakText('今天的学习完成了，明天继续加油！');
+    updateLearnStats();
+}
+
+function updateLearnStats() {
+    const allChars = Object.keys(PINYIN_DICT);
+    const learned = Object.keys(state.learnedChars).filter(c => state.learnedChars[c].level >= 2).length;
+    const learning = Object.keys(state.learnedChars).filter(c => state.learnedChars[c].level < 2).length;
+    const newCount = allChars.length - learned - learning;
+
+    document.getElementById('learnedCount').textContent = learned;
+    document.getElementById('learningCount').textContent = learning;
+    document.getElementById('newCount').textContent = Math.max(0, newCount);
+}
+
+function showLearnedChars() {
+    document.getElementById('learnStart').style.display = 'none';
+    document.getElementById('learnedList').style.display = 'block';
+
+    const list = document.getElementById('learnedCharsList');
+    list.innerHTML = '';
+
+    const chars = Object.entries(state.learnedChars)
+        .sort((a, b) => b[1].level - a[1].level);
+
+    if (chars.length === 0) {
+        list.innerHTML = '<li style="text-align:center; padding:20px; color:var(--text-light); font-size:18px;">还没有学过字，快去学习吧！</li>';
+        return;
+    }
+
+    chars.forEach(([char, data]) => {
+        const info = PINYIN_DICT[char];
+        const levelEmoji = data.level >= 3 ? '🌟' : data.level >= 2 ? '✅' : data.level >= 1 ? '📝' : '🔰';
+        const li = document.createElement('li');
+        li.className = 'record-item';
+        li.innerHTML = `
+            <span class="char">${char}</span>
+            <div class="info">
+                <div class="name">${info ? info.py : ''}</div>
+                <div class="detail">${info ? info.en : ''} · 学了${data.count}次</div>
+            </div>
+            <span class="status">${levelEmoji}</span>
+        `;
+        li.onclick = () => speakText(`${char}，${info ? info.py : ''}，${info ? info.en : ''}`);
+        list.appendChild(li);
+    });
+}
+
+function hideLearnedChars() {
+    document.getElementById('learnedList').style.display = 'none';
+    document.getElementById('learnStart').style.display = 'block';
+}
+
+
+// ============================================================
+//  工具函数
+// ============================================================
+
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function getRandomPinyins(exclude, count) {
+    const allPinyins = [...new Set(Object.values(PINYIN_DICT).map(i => i.py))];
+    const filtered = allPinyins.filter(p => p !== exclude);
+    return shuffle(filtered).slice(0, count);
+}
+
+function isYesterday(dateStr) {
+    if (!dateStr) return false;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return dateStr === yesterday.toDateString();
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+
+// ============================================================
+//  离线检测
+// ============================================================
+
+function updateOnlineStatus() {
+    const notice = document.getElementById('offlineNotice');
+    if (!navigator.onLine) {
+        notice.classList.add('show');
+    } else {
+        notice.classList.remove('show');
+    }
+}
+
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+
+// ============================================================
+//  初始化
+// ============================================================
+
+window.addEventListener('DOMContentLoaded', () => {
+    updateOnlineStatus();
+    updateDailyStats();
+    updateLearnStats();
+    // 页面加载时就初始化两个Canvas（不等用户切换到手写模式）
+    setTimeout(() => {
+        initCanvas('writeCanvas');
+        initCanvas('lookupCanvas');
+    }, 200);
+});
+</script>
+
+</body>
+</html>
