@@ -814,14 +814,17 @@
 
         <!-- 今日学习 -->
         <div class="card" id="learnCard" style="display:none;">
+            <div style="text-align:center; margin-bottom:12px;">
+                <span id="learnPhase" style="font-size:16px; color:var(--text-light); background:var(--secondary-light); padding:4px 12px; border-radius:8px;">📖 新字</span>
+            </div>
             <div class="char-card">
                 <div class="big-char" id="learnChar"></div>
                 <div class="pinyin" id="learnPinyin"></div>
-                <div class="meaning" id="learnMeaning"></div>
+                <div id="learnMeaning"></div>
                 <div class="en-translation" id="learnEnglish"></div>
                 <div style="margin-top:16px;">
                     <button class="btn btn-outline btn-sm" onclick="speakChar()">
-                        🔊 听一听
+                        🔊 再听一遍
                     </button>
                 </div>
                 <div class="learn-btn" style="margin-top:20px; display:flex; gap:10px;">
@@ -837,14 +840,32 @@
 
         <!-- 学习入口 -->
         <div id="learnStart">
+            <!-- 今日任务 -->
+            <div class="card" style="background:var(--secondary-light);">
+                <div style="font-size:20px; font-weight:700; color:var(--secondary); margin-bottom:8px;">📋 今日任务</div>
+                <div style="font-size:18px;">
+                    🔄 需要复习：<strong id="reviewCount">0</strong> 个字<br>
+                    📖 今天新学：<strong>5</strong> 个字
+                </div>
+            </div>
             <button class="btn btn-primary btn-large" onclick="startLearning()">
                 📖 开始今天的识字课<br>
-                <span style="font-size:15px;font-weight:400;">每天学5个新字</span>
+                <span style="font-size:15px;font-weight:400;">先复习，再学新字</span>
             </button>
             <div style="height:12px;"></div>
             <button class="btn btn-outline btn-large" onclick="showLearnedChars()">
                 📚 看看我学过的字
             </button>
+            <div style="height:12px;"></div>
+            <!-- 每日学字数量设定 -->
+            <div class="card">
+                <div style="font-size:18px; font-weight:600; margin-bottom:10px;">⚙️ 每天学几个字？</div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline btn-sm daily-limit-btn" onclick="setDailyLimit(3)" data-limit="3">3个</button>
+                    <button class="btn btn-primary btn-sm daily-limit-btn" onclick="setDailyLimit(5)" data-limit="5">5个（推荐）</button>
+                    <button class="btn btn-outline btn-sm daily-limit-btn" onclick="setDailyLimit(10)" data-limit="10">10个</button>
+                </div>
+            </div>
         </div>
 
         <!-- 学过的字列表 -->
@@ -3890,48 +3911,49 @@ function analyzeErrors(text) {
             }
         }
 
-        // 兜底：罕见字 + 形近字/同音字很常见 → 标记
-        // 但要排除：这个字和邻居已经组成了正确词组的情况（如"厂里""风景"）
+        // 兜底：罕见字 + 形近字/同音字更常见 → 标记
+        // 常用字白名单：这些字几乎不会写错
+        const SAFE = new Set('的一是不了人我在有他这中大来上个国和到说时要就出会也你对生能子那得于着下自之年过发后作里用道行所然家种事成方多经么去法学如都同现当没动面起看定天分还进好小部其些主样理心她本前开但因只从想实日军者意无力它与长把机十民第公此已工使情明性知全又关点正业外将两高间由问很最重并物手应战向头文体政美相见被利什等产或新己制身果加西斯月话合回特代内信表化给世位次度门任常先海通教儿原东声提立及比员解水名真论处走义各入口认条平系气题活尔更别打女变四神总何电数安少报才结反受目太量再感建务做快深商算百亲联步热乐据飞风科增议南术规基北取花严求治投己王白谈财马温古广拿计拉整容影犯调价块土效值望护希食够伤追掉春冷童探摇健穷枝慰奉庆孝徒淡碧壮猜赤旋搬辰础申苗凤方柳史费雷贺罗安常乐于傅齐康余孟黄穆尹姚汪贝明伏成宋纪祝董杜蓝季强贾路危江颜梅林钟徐夏田胡万柯管卢莫经房干应丁宣邓洪包左石吉程裴荣翁羊惠封段富弓侯秋宫宁甘厉祖武符刘景龙叶幸黎印怀蒲索赖卓蒙池乔阴闻谭贡姬冉桑桂牛寿通边燕冀农庄柴阎连习艾容易廖居衡步满文广聂冷辛简饶曾沙养须丰相查后红游权盖益公'.split(''));
+
         const freq_c1 = charFreq[c1] || 0;
         const freq_c2 = charFreq[c2] || 0;
 
-        // 检查 c1 是否和左边的字组成正确词组
-        const c1_left_ok = i > 0 && !/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(text[i-1]) && VALID_WORDS.has(text[i-1] + c1);
-        // 检查 c1 是否和右边的字组成正确词组
-        const c1_right_ok = i < text.length - 2 && !/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(text[i+2]) && VALID_WORDS.has(c1 + text[i+2]);
-
-        if (freq_c1 <= 2 && !seen.has(i + ':' + c1) && !c1_left_ok && !c1_right_ok) {
-            const betterC1 = findMuchBetterCandidate(c1, charFreq);
-            if (betterC1) {
-                seen.add(i + ':' + c1);
-                errors.push({
-                    position: i,
-                    wrong: c1,
-                    correct: betterC1.char,
-                    explain: '"' + c1 + "'不常用，您可能想写'" + betterC1.char + "'（" + betterC1.pinyin + "，更常用）",
-                    context: text.substring(Math.max(0, i - 1), Math.min(text.length, i + 3))
-                });
-                continue;
+        // 只对不在白名单里且频率很低的字做检查
+        if (!SAFE.has(c1) && freq_c1 <= 1 && !seen.has(i + ':' + c1)) {
+            // 检查 c1 是否和邻居组成正确词组
+            const c1_in_word = (i > 0 && !/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(text[i-1]) && VALID_WORDS.has(text[i-1] + c1))
+                || (i < text.length - 2 && !/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(text[i+2]) && VALID_WORDS.has(c1 + text[i+2]));
+            if (!c1_in_word) {
+                const betterC1 = findMuchBetterCandidate(c1, charFreq);
+                if (betterC1) {
+                    seen.add(i + ':' + c1);
+                    errors.push({
+                        position: i,
+                        wrong: c1,
+                        correct: betterC1.char,
+                        explain: '"' + c1 + "'不常用，您可能想写'" + betterC1.char + "'（" + betterC1.pinyin + "）",
+                        context: text.substring(Math.max(0, i - 1), Math.min(text.length, i + 3))
+                    });
+                    continue;
+                }
             }
         }
 
-        // 检查 c2 是否和右边的字组成正确词组
-        const c2_right_ok = i < text.length - 2 && !/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(text[i+2]) && VALID_WORDS.has(c2 + text[i+2]);
-        // 检查 c2 是否和左边的字组成正确词组（即 bigram 本身）
-        const c2_left_ok = VALID_WORDS.has(c1 + c2); // 已经在上面检查过了，这里实际是检查 c2 和更右边的字
-
-        if (freq_c2 <= 2 && !seen.has((i + 1) + ':' + c2) && !c2_right_ok) {
-            const betterC2 = findMuchBetterCandidate(c2, charFreq);
-            if (betterC2) {
-                seen.add((i + 1) + ':' + c2);
-                errors.push({
-                    position: i + 1,
-                    wrong: c2,
-                    correct: betterC2.char,
-                    explain: '"' + c2 + "'不常用，您可能想写'" + betterC2.char + "'（" + betterC2.pinyin + "，更常用）",
-                    context: text.substring(Math.max(0, i - 1), Math.min(text.length, i + 3))
-                });
-                continue;
+        if (!SAFE.has(c2) && freq_c2 <= 1 && !seen.has((i + 1) + ':' + c2)) {
+            const c2_in_word = (i < text.length - 2 && !/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(text[i+2]) && VALID_WORDS.has(c2 + text[i+2]));
+            if (!c2_in_word) {
+                const betterC2 = findMuchBetterCandidate(c2, charFreq);
+                if (betterC2) {
+                    seen.add((i + 1) + ':' + c2);
+                    errors.push({
+                        position: i + 1,
+                        wrong: c2,
+                        correct: betterC2.char,
+                        explain: '"' + c2 + "'不常用，您可能想写'" + betterC2.char + "'（" + betterC2.pinyin + "）",
+                        context: text.substring(Math.max(0, i - 1), Math.min(text.length, i + 3))
+                    });
+                    continue;
+                }
             }
         }
     }
@@ -4176,8 +4198,7 @@ function displayCheckResult(text, errors) {
 
     correctionsDiv.innerHTML = correctionsHtml;
 
-    // 语音播报：简短提示，详细内容靠点击
-    speakText('发现了' + errors.length + '个错别字，点一下听详情');
+    // 不自动朗读，等用户自己点击纠错卡片才读
 
     // 记录到错题本
     errors.forEach(err => {
@@ -4669,20 +4690,20 @@ function updateDailyStats() {
 //  查字功能
 // ============================================================
 
-// 找"好得多"的替代字：罕见字的形近字/同音字中，找一个常用得多的
+// 找更常用的替代字：形近字或同音字中，找一个明显更常用的
 function findMuchBetterCandidate(rareChar, charFreq) {
     const rareFreq = charFreq[rareChar] || 0;
     let best = null;
     let bestFreq = 0;
 
-    // 形近字候选
+    // 形近字候选（CONFUSABLES 中的配对，直接作为候选）
     for (const [c, w] of CONFUSABLES) {
         let candidate = null;
         if (w === rareChar && c.length === 1) candidate = c;
         if (c === rareChar && w.length === 1) candidate = w;
-        if (candidate) {
+        if (candidate && candidate !== rareChar && PINYIN_DICT[candidate]) {
             const freq = charFreq[candidate] || 0;
-            if (freq > rareFreq * 3 && freq > bestFreq) {
+            if (freq >= bestFreq) {
                 best = candidate;
                 bestFreq = freq;
             }
@@ -4697,9 +4718,11 @@ function findMuchBetterCandidate(rareChar, charFreq) {
             const py = getPinyinBase(char);
             if (py === pinyin) {
                 const freq = charFreq[char] || 0;
-                if (freq > rareFreq * 3 && freq > bestFreq) {
-                    best = char;
-                    bestFreq = freq;
+                if (freq > rareFreq || (rareFreq === 0 && freq > 0)) {
+                    if (freq > bestFreq) {
+                        best = char;
+                        bestFreq = freq;
+                    }
                 }
             }
         }
@@ -4954,23 +4977,69 @@ function parseCharDescription(text) {
 //  学认字
 // ============================================================
 
-function startLearning() {
-    // 生成学习队列：先学没学过的，再复习学过但不太熟的
-    const allChars = Object.keys(PINYIN_DICT);
+// 艾宾浩斯复习间隔（天数）
+const EBBINGHAUS_INTERVALS = [1, 2, 4, 7, 15, 30];
+
+// 找一个字的常见词组（从 VALID_WORDS 中找包含这个字的词）
+function getWordsForChar(char) {
+    const words = [];
+    for (const word of VALID_WORDS) {
+        if (word.includes(char) && word.length >= 2 && word.length <= 4) {
+            words.push(word);
+        }
+    }
+    // 按词长排序，短词优先，最多取8个
+    words.sort((a, b) => a.length - b.length);
+    return words.slice(0, 8);
+}
+
+// 获取今天需要复习的字（艾宾浩斯日期到了的）
+function getReviewChars() {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const review = [];
+    for (const [char, data] of Object.entries(state.learnedChars)) {
+        if (data.level < EBBINGHAUS_INTERVALS.length && data.nextReview && data.nextReview <= today) {
+            review.push(char);
+        }
+    }
+    return shuffle(review);
+}
+
+// 获取还没学过的字（按常用度排序）
+function getNewChars() {
+    // 优先学 PINYIN_DICT 中有 words 的字（更常用）
+    const allChars = Object.keys(PINYIN_DICT).filter(c => c.length === 1);
     const newChars = allChars.filter(c => !state.learnedChars[c]);
-    const reviewChars = allChars.filter(c => state.learnedChars[c] && state.learnedChars[c].level < 3);
+    // 优先选有词组的字
+    const withWords = newChars.filter(c => {
+        const info = PINYIN_DICT[c];
+        return info && info.words && info.words.length > 0;
+    });
+    const withoutWords = newChars.filter(c => {
+        const info = PINYIN_DICT[c];
+        return !info || !info.words || info.words.length === 0;
+    });
+    return [...shuffle(withWords), ...shuffle(withoutWords)];
+}
+
+function startLearning() {
+    // 先复习，再学新字
+    const reviewChars = getReviewChars();
+    const newChars = getNewChars();
+    const dailyLimit = parseInt(localStorage.getItem('dailyLearnLimit') || '5');
 
     state.learnQueue = [
-        ...shuffle(newChars).slice(0, 5),
-        ...shuffle(reviewChars).slice(0, 2)
+        ...reviewChars.slice(0, 10), // 最多复习10个
+        ...newChars.slice(0, dailyLimit)
     ];
 
     if (state.learnQueue.length === 0) {
-        showToast('🎉 恭喜！常用字都学完了！');
+        showToast('🎉 恭喜！所有常用字都学完了！');
         return;
     }
 
     state.currentLearnIndex = 0;
+    state.learnPhase = reviewChars.length > 0 ? 'review' : 'new';
     document.getElementById('learnStart').style.display = 'none';
     document.getElementById('learnCard').style.display = 'block';
     showLearnCard();
@@ -4984,21 +5053,44 @@ function showLearnCard() {
     }
 
     const info = PINYIN_DICT[char];
+    const isReview = state.learnPhase === 'review' && state.currentLearnIndex < (state.learnQueue.length - parseInt(localStorage.getItem('dailyLearnLimit') || '5'));
+
     document.getElementById('learnChar').textContent = char;
     document.getElementById('learnPinyin').textContent = info ? info.py : '';
-    document.getElementById('learnMeaning').textContent = info ? (info.words || []).join('、') : '';
+
+    // 显示常见词组（从 VALID_WORDS 中找）
+    const words = getWordsForChar(char);
+    const wordsDiv = document.getElementById('learnMeaning');
+    if (words.length > 0) {
+        wordsDiv.innerHTML = '<div style="margin-top:12px;">' +
+            '<div style="font-size:16px; color:var(--text-light); margin-bottom:6px;">常见词组：</div>' +
+            words.map(w => {
+                const wEn = WORD_EN[w];
+                const enText = wEn ? ' <span style="color:#1565C0;font-size:14px;">' + wEn.emoji + ' ' + wEn.en + '</span>' : '';
+                return '<span style="display:inline-block;background:var(--primary-light);color:var(--primary);padding:6px 14px;border-radius:8px;margin:3px;font-size:20px;font-weight:600;cursor:pointer;" onclick="speakText(\'' + w + '\',\'zh-CN\')">' + w + ' 🔊</span>' + enText;
+            }).join('') +
+            '</div>';
+    } else {
+        wordsDiv.innerHTML = '';
+    }
 
     // 英文
     const enDiv = document.getElementById('learnEnglish');
     if (info && info.en) {
-        enDiv.innerHTML = `<span class="en-word" onclick="speakText('${info.en}', 'en-US')">${info.emoji || ''} ${info.en} <span class="speaker">🔊</span></span>`;
+        enDiv.innerHTML = '<span class="en-word" onclick="speakText(\'' + info.en + '\', \'en-US\')">' + (info.emoji || '') + ' ' + info.en + ' <span class="speaker">🔊</span></span>';
     } else {
         enDiv.innerHTML = '';
     }
 
+    // 提示是复习还是新学
+    const phaseDiv = document.getElementById('learnPhase');
+    if (phaseDiv) {
+        phaseDiv.textContent = isReview ? '🔄 复习' : '📖 新字';
+    }
+
     // 读出这个字
     setTimeout(() => {
-        speakText(`${char}，${info ? info.py : ''}`);
+        speakText(char + '，' + (info ? info.py : ''));
     }, 500);
 }
 
@@ -5012,19 +5104,36 @@ function markChar(level) {
     const char = state.learnQueue[state.currentLearnIndex];
     if (!char) return;
 
+    const today = new Date().toISOString().split('T')[0];
+
     if (!state.learnedChars[char]) {
-        state.learnedChars[char] = { level: 0, count: 0 };
+        state.learnedChars[char] = { level: 0, count: 0, nextReview: today, lastReview: today };
     }
 
+    const data = state.learnedChars[char];
+    data.count += 1;
+    data.lastReview = today;
+
     if (level === 'easy') {
-        state.learnedChars[char].level += 1;
-        state.learnedChars[char].count += 1;
+        // 认识了 → 推进到下一个复习阶段
+        data.level = Math.min(data.level + 1, EBBINGHAUS_INTERVALS.length);
+        // 安排下次复习
+        if (data.level < EBBINGHAUS_INTERVALS.length) {
+            const next = new Date();
+            next.setDate(next.getDate() + EBBINGHAUS_INTERVALS[data.level]);
+            data.nextReview = next.toISOString().split('T')[0];
+        } else {
+            data.nextReview = ''; // 学会了，不需要再复习
+        }
         // 从错题本移除
         const idx = state.wrongChars.indexOf(char);
         if (idx > -1) state.wrongChars.splice(idx, 1);
     } else {
-        state.learnedChars[char].level = Math.max(0, state.learnedChars[char].level - 1);
-        state.learnedChars[char].count += 1;
+        // 不认识 → 回退一个阶段，明天再复习
+        data.level = Math.max(0, data.level - 1);
+        const next = new Date();
+        next.setDate(next.getDate() + 1);
+        data.nextReview = next.toISOString().split('T')[0];
         // 加入错题本
         if (!state.wrongChars.includes(char)) {
             state.wrongChars.push(char);
@@ -5087,14 +5196,19 @@ function finishLearning() {
 }
 
 function updateLearnStats() {
-    const allChars = Object.keys(PINYIN_DICT);
-    const learned = Object.keys(state.learnedChars).filter(c => state.learnedChars[c].level >= 2).length;
-    const learning = Object.keys(state.learnedChars).filter(c => state.learnedChars[c].level < 2).length;
-    const newCount = allChars.length - learned - learning;
+    const allSingleChars = Object.keys(PINYIN_DICT).filter(c => c.length === 1);
+    const mastered = Object.keys(state.learnedChars).filter(c => state.learnedChars[c].level >= EBBINGHAUS_INTERVALS.length).length;
+    const learning = Object.keys(state.learnedChars).filter(c => state.learnedChars[c].level > 0 && state.learnedChars[c].level < EBBINGHAUS_INTERVALS.length).length;
+    const needReview = getReviewChars().length;
+    const newCount = allSingleChars.length - mastered - learning;
 
-    document.getElementById('learnedCount').textContent = learned;
+    document.getElementById('learnedCount').textContent = mastered;
     document.getElementById('learningCount').textContent = learning;
     document.getElementById('newCount').textContent = Math.max(0, newCount);
+
+    // 显示今天需要复习的数量
+    const reviewDiv = document.getElementById('reviewCount');
+    if (reviewDiv) reviewDiv.textContent = needReview;
 }
 
 function showLearnedChars() {
@@ -5114,20 +5228,37 @@ function showLearnedChars() {
 
     chars.forEach(([char, data]) => {
         const info = PINYIN_DICT[char];
-        const levelEmoji = data.level >= 3 ? '🌟' : data.level >= 2 ? '✅' : data.level >= 1 ? '📝' : '🔰';
+        const mastered = data.level >= EBBINGHAUS_INTERVALS.length;
+        const levelEmoji = mastered ? '🌟' : data.level >= 4 ? '✅' : data.level >= 2 ? '📝' : '🔰';
+        const progress = mastered ? '已学会' : '第' + data.level + '/' + EBBINGHAUS_INTERVALS.length + '阶段';
+        const nextReview = data.nextReview ? (mastered ? '' : ' · 下次复习：' + data.nextReview) : '';
         const li = document.createElement('li');
         li.className = 'record-item';
         li.innerHTML = `
             <span class="char">${char}</span>
             <div class="info">
                 <div class="name">${info ? info.py : ''}</div>
-                <div class="detail">${info ? info.en : ''} · 学了${data.count}次</div>
+                <div class="detail">${progress}${nextReview} · 学了${data.count}次</div>
             </div>
             <span class="status">${levelEmoji}</span>
         `;
         li.onclick = () => speakText(`${char}，${info ? info.py : ''}，${info ? info.en : ''}`);
         list.appendChild(li);
     });
+}
+
+function setDailyLimit(n) {
+    localStorage.setItem('dailyLearnLimit', n.toString());
+    // 更新按钮样式
+    document.querySelectorAll('.daily-limit-btn').forEach(btn => {
+        const limit = parseInt(btn.getAttribute('data-limit'));
+        if (limit === n) {
+            btn.className = 'btn btn-primary btn-sm daily-limit-btn';
+        } else {
+            btn.className = 'btn btn-outline btn-sm daily-limit-btn';
+        }
+    });
+    showToast('已设定每天学 ' + n + ' 个字');
 }
 
 function hideLearnedChars() {
