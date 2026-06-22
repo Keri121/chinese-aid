@@ -901,6 +901,21 @@
 </div>
 
 <!-- ===== 底部导航 ===== -->
+<!-- 添加到桌面引导（首次显示，可关闭） -->
+<div id="addToHome" style="display:none; position:fixed; bottom:80px; left:16px; right:16px; background:var(--card); border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:16px; z-index:200; border:2px solid var(--primary);">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font-size:40px;">📱</div>
+        <div style="flex:1;">
+            <div style="font-size:18px; font-weight:700; margin-bottom:4px;">添加到桌面，下次打开更方便</div>
+            <div style="font-size:15px; color:var(--text-light); line-height:1.6;">
+                <strong>苹果手机：</strong>点下面的分享按钮 ⬆️ → "添加到主屏幕"<br>
+                <strong>安卓手机：</strong>点浏览器菜单 ⋮ → "添加到桌面"
+            </div>
+        </div>
+        <button onclick="dismissAddToHome()" style="background:none; border:none; font-size:24px; cursor:pointer; padding:4px;">✕</button>
+    </div>
+</div>
+
 <div class="nav">
     <button class="nav-item active" onclick="switchPage('check')">
         <span class="icon">📝</span>
@@ -4873,6 +4888,11 @@ function stripTone(pinyin) {
     return pinyin.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ü/g, 'v');
 }
 
+function dismissAddToHome() {
+    document.getElementById('addToHome').style.display = 'none';
+    localStorage.setItem('addToHomeDismissed', '1');
+}
+
 // 通过手写输入框查找字
 function lookupByDrawInput() {
     const input = document.getElementById('drawInput').value.trim();
@@ -5473,6 +5493,13 @@ window.addEventListener('DOMContentLoaded', () => {
     const isLimited = /MicroMessenger|QQ\/|weibo|douban|Alipay/i.test(ua);
     if (isLimited) {
         document.getElementById('browserHint').style.display = 'block';
+    }
+
+    // 添加到桌面引导（首次显示）
+    if (!localStorage.getItem('addToHomeDismissed')) {
+        setTimeout(function() {
+            document.getElementById('addToHome').style.display = 'block';
+        }, 2000); // 2秒后显示
     }
 
     // 加载外部词典文件（10万词）
