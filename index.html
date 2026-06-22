@@ -3496,32 +3496,28 @@ function speakText(text, lang) {
         try { state._ttsAudio.pause(); } catch(e) {}
         state._ttsAudio = null;
     }
-    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(e) {}
 
-    // 同时启动两种方案，哪个先成功用哪个
-    let used = false;
-
-    // 方案1：Edge TTS（微软晓晓语音，国内可用）
-    speakByEdgeTTS(shortText, lang, function(ok) {
-        if (ok) used = true;
-    });
-
-    // 方案2：Web Speech API（2秒后如果Edge还没成功就用这个）
-    setTimeout(function() {
-        if (!used) {
-            try {
-                if (window.speechSynthesis) {
-                    const u = new SpeechSynthesisUtterance(shortText);
-                    u.lang = lang;
-                    u.rate = 0.8;
-                    u.volume = 0.6;
-                    if (lang === 'en-US') u.rate = 0.7;
-                    u.onstart = function() { used = true; };
-                    window.speechSynthesis.speak(u);
-                }
-            } catch(e) {}
+    // 方案1：Web Speech API（用户点击触发，浏览器允许播放）
+    let speechWorked = false;
+    try {
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(shortText);
+            u.lang = lang;
+            u.rate = 0.8;
+            u.volume = 0.6;
+            if (lang === 'en-US') u.rate = 0.7;
+            u.onstart = function() { speechWorked = true; };
+            u.onerror = function() { if (!speechWorked) speakByEdgeTTS(shortText, lang); };
+            window.speechSynthesis.speak(u);
+            // 2秒后如果还没开始播放，用Edge TTS
+            setTimeout(function() { if (!speechWorked) speakByEdgeTTS(shortText, lang); }, 2000);
+            return;
         }
-    }, 2000);
+    } catch(e) {}
+
+    // 方案2：Edge TTS
+    speakByEdgeTTS(shortText, lang);
 }
 
 // Edge TTS：通过 WebSocket 连接微软语音服务
@@ -4333,7 +4329,7 @@ function displayCheckResult(text, errors) {
         <div style="font-size:18px; color:var(--error); margin-bottom:8px;">
             发现 <strong>${errors.length}</strong> 个可能的错别字
         </div>
-        <div class="result-text" onclick="speakText('${text.replace(/'/g, "\\'")}')" style="cursor:pointer;">${highlighted}<div style="font-size:14px; color:var(--text-light); margin-top:8px;">👆 点这里听一遍原文</div></div>
+        <div class="result-text" onclick="try{var u=new SpeechSynthesisUtterance('${text.replace(/'/g, "\\'").replace(/"/g, '&quot;')}');u.lang='zh-CN';u.rate=0.8;u.volume=0.6;window.speechSynthesis.speak(u);}catch(e){}" style="cursor:pointer;">${highlighted}<div style="font-size:14px; color:var(--text-light); margin-top:8px;">👆 点这里听一遍原文</div></div>
     `;
 
     // 显示每个纠正
@@ -4349,8 +4345,10 @@ function displayCheckResult(text, errors) {
         const speakMsg = err.correct.length > 1
             ? '这里' + err.wrong + '应该是' + err.correct + '，' + pinyin
             : '这里' + err.wrong + '写错了，应该是' + err.correct + '，' + (pinyin || '') + err.correct;
+        // 用直接内联的方式播放语音（绕过异步问题）
+        const safeMsg = speakMsg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         correctionsHtml += `
-            <div class="correction-card" onclick="speakText('${speakMsg.replace(/'/g, "\\'")}')" style="cursor:pointer;">
+            <div class="correction-card" onclick="try{var u=new SpeechSynthesisUtterance('${safeMsg}');u.lang='zh-CN';u.rate=0.8;u.volume=0.6;window.speechSynthesis.speak(u);}catch(e){}" style="cursor:pointer;">
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <span class="wrong">${err.wrong}</span>
                     <span style="font-size:24px;">→</span>
