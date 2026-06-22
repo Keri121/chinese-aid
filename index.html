@@ -3298,6 +3298,29 @@ const VALID_WORDS = new Set([
     "坚持不懈","始终不渝","矢志不渝","坚定不移","雷打不动",
     "滴水穿石","铁杵成针","磨杵成针","愚公移山","精卫填海",
     "有志者事竟成","功夫不负有心人","只要功夫深铁杵磨成针",
+    // 日常高频词（确保内置，不依赖words.json加载）
+    "钥匙","开门","关门","锁门","出门","进门","回家","出门",
+    "吃饭","喝水","睡觉","起床","洗脸","刷牙","穿衣","出门",
+    "知道","认识","了解","明白","觉得","认为","希望","相信",
+    "已经","以前","以后","正在","现在","刚才","刚刚","就要",
+    "都是","不是","就是","还是","也有","又是","只是","都有",
+    "不好","不错","不对","不要","不会","不能","不行","不必",
+    "可以","可能","可是","可爱","可惜","可靠","可怜",
+    "我的","你的","他的","她的","我们的","你们的","他们的",
+    "什么","怎么","那么","这么","多么","哪个","那个","这个",
+    "这里","那里","哪里","这边","那边","哪边",
+    "今天","明天","昨天","后天","前天","每天",
+    "好了","来了","去了","看了","说了","做了","到了",
+    "好吗","对吗","是吗","行吗","好不好","对不对",
+    "说得对","做得到","看得见","听得见","想得到",
+    "怎么办","怎么说","怎么做","多少钱","在哪里",
+    "爸爸","妈妈","爷爷","奶奶","哥哥","姐姐","弟弟","妹妹",
+    "老师","医生","学生","朋友","同学","同事","邻居",
+    "汽车","火车","飞机","手机","电脑","电视","电话",
+    "工厂","学校","医院","商店","银行","公园","车站",
+    "中国","北京","上海","广州","贵州","四川",
+    "红色","蓝色","绿色","黄色","白色","黑色",
+    "大人","小孩","老人","男人","女人","年轻人",
 ]);
 
 
@@ -3466,20 +3489,44 @@ function startVoice() {
 
 function speakText(text, lang) {
     lang = lang || 'zh-CN';
-    const shortText = text.substring(0, 200);
+    const shortText = text.substring(0, 150);
 
     // 停止之前的播放
     if (state._ttsAudio) {
         try { state._ttsAudio.pause(); } catch(e) {}
         state._ttsAudio = null;
     }
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(e) {}
 
-    // 方案1：Edge TTS（微软，国内可用，效果好）
-    speakByEdgeTTS(shortText, lang);
+    // 同时启动两种方案，哪个先成功用哪个
+    let used = false;
+
+    // 方案1：Edge TTS（微软晓晓语音，国内可用）
+    speakByEdgeTTS(shortText, lang, function(ok) {
+        if (ok) used = true;
+    });
+
+    // 方案2：Web Speech API（2秒后如果Edge还没成功就用这个）
+    setTimeout(function() {
+        if (!used) {
+            try {
+                if (window.speechSynthesis) {
+                    const u = new SpeechSynthesisUtterance(shortText);
+                    u.lang = lang;
+                    u.rate = 0.8;
+                    u.volume = 0.6;
+                    if (lang === 'en-US') u.rate = 0.7;
+                    u.onstart = function() { used = true; };
+                    window.speechSynthesis.speak(u);
+                }
+            } catch(e) {}
+        }
+    }, 2000);
 }
 
 // Edge TTS：通过 WebSocket 连接微软语音服务
-function speakByEdgeTTS(text, lang) {
+function speakByEdgeTTS(text, lang, callback) {
+    callback = callback || function(){};
     try {
         const voice = lang === 'en-US' ? 'en-US-JennyNeural' : 'zh-CN-XiaoxiaoNeural';
         const connId = generateId();
@@ -3487,63 +3534,47 @@ function speakByEdgeTTS(text, lang) {
 
         const ws = new WebSocket(url);
         const audioChunks = [];
+        let done = false;
 
         ws.onopen = function() {
-            // 发送配置
             ws.send('Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n' +
-                JSON.stringify({
-                    context: {
-                        synthesis: {
-                            audio: {
-                                metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'true' },
-                                outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
-                            }
-                        }
-                    }
-                }));
+                JSON.stringify({context:{synthesis:{audio:{metadataoptions:{sentenceBoundaryEnabled:'false',wordBoundaryEnabled:'true'},outputFormat:'audio-24khz-48kbitrate-mono-mp3'}}}}));
 
-            // 发送要朗读的文本
             const requestId = generateId();
             const timestamp = new Date().toISOString();
-            const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='" + lang + "'><voice name='" + voice + "'>" + escapedText + "</voice></speak>";
-            ws.send('X-RequestId:' + requestId + '\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:' + timestamp + '\r\nPath:ssml\r\n\r\n' + ssml);
+            const escapedText = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='"+lang+"'><voice name='"+voice+"'>"+escapedText+"</voice></speak>";
+            ws.send('X-RequestId:'+requestId+'\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:'+timestamp+'\r\nPath:ssml\r\n\r\n'+ssml);
         };
 
         ws.onmessage = function(event) {
             if (event.data instanceof Blob) {
                 audioChunks.push(event.data);
             } else if (typeof event.data === 'string' && event.data.includes('Path:turn.end')) {
-                // 音频接收完毕，播放
-                const blob = new Blob(audioChunks, { type: 'audio/mp3' });
+                done = true;
+                const blob = new Blob(audioChunks, {type:'audio/mp3'});
                 const audioUrl = URL.createObjectURL(blob);
                 const audio = new Audio(audioUrl);
                 audio.volume = 0.5;
                 state._ttsAudio = audio;
-                audio.play().catch(function() {
-                    // Edge TTS 播放失败，用备用方案
-                    speakByBackup(text, lang);
-                });
-                audio.onended = function() { URL.revokeObjectURL(audioUrl); };
+                audio.play().then(function(){ callback(true); }).catch(function(){ callback(false); });
+                audio.onended = function(){ URL.revokeObjectURL(audioUrl); };
                 ws.close();
             }
         };
 
-        ws.onerror = function() {
-            // WebSocket 连接失败，用备用方案
-            speakByBackup(text, lang);
-        };
+        ws.onerror = function() { if (!done) callback(false); };
 
-        // 超时处理
+        // 3秒超时
         setTimeout(function() {
-            if (ws.readyState !== WebSocket.CLOSED) {
-                ws.close();
-                if (audioChunks.length === 0) speakByBackup(text, lang);
+            if (!done) {
+                try { ws.close(); } catch(e) {}
+                callback(false);
             }
-        }, 8000);
+        }, 3000);
 
     } catch(e) {
-        speakByBackup(text, lang);
+        callback(false);
     }
 }
 
