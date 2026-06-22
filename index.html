@@ -5502,17 +5502,24 @@ window.addEventListener('DOMContentLoaded', () => {
         }, 2000); // 2秒后显示
     }
 
-    // 加载外部词典文件（10万词）
-    fetch('words.json')
-        .then(r => r.json())
-        .then(words => {
-            words.forEach(w => VALID_WORDS.add(w));
-            console.log('词典加载完成，总计 ' + VALID_WORDS.size + ' 个词');
-            showToast('📚 词典已加载（' + VALID_WORDS.size + '个词）');
-        })
-        .catch(e => {
-            console.log('词典加载失败，使用内置词典（' + VALID_WORDS.size + '个词）');
-        });
+    // 加载外部词典文件（10万词）+ 拼音字典（8000+字）
+    Promise.all([
+        fetch('words.json').then(r => r.json()).catch(() => []),
+        fetch('pinyin.json').then(r => r.json()).catch(() => ({}))
+    ]).then(([words, pinyinMap]) => {
+        // 合并词典
+        words.forEach(w => VALID_WORDS.add(w));
+        // 合并拼音字典
+        for (const [char, py] of Object.entries(pinyinMap)) {
+            if (!PINYIN_DICT[char]) {
+                PINYIN_DICT[char] = { py: py, words: [], en: "", emoji: "" };
+            }
+        }
+        console.log('加载完成：' + VALID_WORDS.size + '个词，' + Object.keys(PINYIN_DICT).length + '个字');
+        showToast('📚 已加载（' + Object.keys(PINYIN_DICT).length + '个字）');
+    }).catch(e => {
+        console.log('加载失败，使用内置数据');
+    });
 
     // 页面加载时就初始化两个Canvas
     setTimeout(() => {
