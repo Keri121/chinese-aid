@@ -4000,6 +4000,10 @@ function analyzeErrors(text) {
         // 如果任意一个位置已属于已知词，跳过
         if (skipPos.has(i) || skipPos.has(i + 1)) continue;
 
+        // 如果c1和左边的字组成正确词，或c2和右边的字组成正确词，跳过
+        if (i > 0 && isChinese(text[i-1]) && VALID_WORDS.has(text[i-1] + c1)) continue;
+        if (i + 2 < text.length && isChinese(text[i+2]) && VALID_WORDS.has(c2 + text[i+2])) continue;
+
         const bigram = c1 + c2;
 
         // 词组在词典里 → 没问题
