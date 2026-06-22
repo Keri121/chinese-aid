@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>文字助手 v4 — 帮你认字、写字、学英文</title>
+    <title>文字助手 v5 — 帮你认字、写字、学英文</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -901,6 +901,13 @@
 </div>
 
 <!-- ===== 底部导航 ===== -->
+<!-- 新版本提示（有新版本时显示，点击更新不丢失学习进度） -->
+<div id="updateNotice" style="display:none; position:fixed; top:0; left:0; right:0; background:#1565C0; color:white; padding:12px 16px; z-index:300; text-align:center; font-size:16px;">
+    🆕 有新版本！
+    <button onclick="location.reload(true)" style="background:white; color:#1565C0; border:none; padding:6px 16px; border-radius:8px; font-size:16px; font-weight:600; margin-left:8px; cursor:pointer;">点击更新</button>
+    <button onclick="this.parentElement.style.display='none'" style="background:none; border:none; color:white; font-size:20px; margin-left:8px; cursor:pointer;">✕</button>
+</div>
+
 <!-- 添加到桌面引导（首次显示，可关闭） -->
 <div id="addToHome" style="display:none; position:fixed; bottom:80px; left:16px; right:16px; background:var(--card); border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:16px; z-index:200; border:2px solid var(--primary);">
     <div style="display:flex; align-items:center; gap:12px;">
@@ -3968,11 +3975,11 @@ function analyzeErrors(text) {
     }
     const charFreq = state._charFreq;
 
-    // 第零步：标记属于长词（3-4字）的字符位置，跳过它们
+    // 第零步：标记属于已知词的字符位置，跳过它们
     const skipPos = new Set();
     const isChinese = c => /[一-鿿]/.test(c);
-    // 先检查4字词，再检查3字词（长词优先）
-    for (let len = Math.min(4, text.length); len >= 3; len--) {
+    // 先检查4字词，再检查3字词，最后2字词（长词优先）
+    for (let len = Math.min(4, text.length); len >= 2; len--) {
         for (let i = 0; i <= text.length - len; i++) {
             const word = text.substring(i, i + len);
             if (word.split('').every(isChinese) && VALID_WORDS.has(word)) {
@@ -3990,8 +3997,8 @@ function analyzeErrors(text) {
         if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c1)) continue;
         if (/[，。！？、；：""''（）\s\d\w,.!?;:'"()]/.test(c2)) continue;
 
-        // 如果这个位置属于一个已确认的长词，跳过
-        if (skipPos.has(i) && skipPos.has(i + 1)) continue;
+        // 如果任意一个位置已属于已知词，跳过
+        if (skipPos.has(i) || skipPos.has(i + 1)) continue;
 
         const bigram = c1 + c2;
 
@@ -5499,8 +5506,18 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!localStorage.getItem('addToHomeDismissed')) {
         setTimeout(function() {
             document.getElementById('addToHome').style.display = 'block';
-        }, 2000); // 2秒后显示
+        }, 2000);
     }
+
+    // 自动检测新版本（不丢失学习进度）
+    const currentVersion = 'v5';
+    const savedVersion = localStorage.getItem('appVersion');
+    if (savedVersion && savedVersion !== currentVersion) {
+        // 有新版本，提示用户更新
+        const updateDiv = document.getElementById('updateNotice');
+        if (updateDiv) updateDiv.style.display = 'block';
+    }
+    localStorage.setItem('appVersion', currentVersion);
 
     // 加载外部词典文件（10万词）+ 拼音字典（8000+字）
     Promise.all([
