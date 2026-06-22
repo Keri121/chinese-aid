@@ -3468,79 +3468,105 @@ function speakText(text, lang) {
     lang = lang || 'zh-CN';
     const shortText = text.substring(0, 200);
 
-    // 同时尝试两种方案，哪个先成功用哪个
-    let played = false;
+    // 停止之前的播放
+    if (state._ttsAudio) {
+        try { state._ttsAudio.pause(); } catch(e) {}
+        state._ttsAudio = null;
+    }
 
-    // 方案1：Web Speech API
-    try {
-        if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(shortText);
-            u.lang = lang;
-            u.rate = 0.8;
-            u.pitch = 1;
-            u.volume = 0.4;
-            if (lang === 'en-US') u.rate = 0.7;
-            u.onstart = function() { played = true; };
-            u.onerror = function() { if (!played) speakByAudio(shortText, lang); };
-            window.speechSynthesis.speak(u);
-        }
-    } catch(e) {}
-
-    // 方案2：Audio播放（同时尝试，不等方案1的结果）
-    setTimeout(function() {
-        if (!played) speakByAudio(shortText, lang);
-    }, 200);
+    // 方案1：Edge TTS（微软，国内可用，效果好）
+    speakByEdgeTTS(shortText, lang);
 }
 
-// 检测Web Speech API是否可用
-function canUseSpeechSynth() {
+// Edge TTS：通过 WebSocket 连接微软语音服务
+function speakByEdgeTTS(text, lang) {
     try {
-        return !!window.speechSynthesis;
-    } catch(e) { return false; }
-}
+        const voice = lang === 'en-US' ? 'en-US-JennyNeural' : 'zh-CN-XiaoxiaoNeural';
+        const connId = generateId();
+        const url = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=' + connId;
 
-// 用Audio播放TTS（有道词典公开接口，国内可用）
-function speakByAudio(text, lang) {
-    try {
-        // 停止之前的播放
-        if (state._ttsAudio) {
-            state._ttsAudio.pause();
-            state._ttsAudio = null;
-        }
+        const ws = new WebSocket(url);
+        const audioChunks = [];
 
-        const shortText = text.substring(0, 100);
-        let url;
+        ws.onopen = function() {
+            // 发送配置
+            ws.send('Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n' +
+                JSON.stringify({
+                    context: {
+                        synthesis: {
+                            audio: {
+                                metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'true' },
+                                outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
+                            }
+                        }
+                    }
+                }));
 
-        if (lang === 'en-US') {
-            // 英文：有道TTS
-            url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(shortText) + '&type=2';
-        } else {
-            // 中文：有道TTS
-            url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(shortText) + '&type=1';
-        }
+            // 发送要朗读的文本
+            const requestId = generateId();
+            const timestamp = new Date().toISOString();
+            const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='" + lang + "'><voice name='" + voice + "'>" + escapedText + "</voice></speak>";
+            ws.send('X-RequestId:' + requestId + '\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:' + timestamp + '\r\nPath:ssml\r\n\r\n' + ssml);
+        };
 
-        const audio = new Audio(url);
-        audio.volume = 1.0;
-        state._ttsAudio = audio;
-        audio.play().catch(function() {
-            // 有道不行，试百度
-            speakByBaidu(shortText, lang);
-        });
+        ws.onmessage = function(event) {
+            if (event.data instanceof Blob) {
+                audioChunks.push(event.data);
+            } else if (typeof event.data === 'string' && event.data.includes('Path:turn.end')) {
+                // 音频接收完毕，播放
+                const blob = new Blob(audioChunks, { type: 'audio/mp3' });
+                const audioUrl = URL.createObjectURL(blob);
+                const audio = new Audio(audioUrl);
+                audio.volume = 0.5;
+                state._ttsAudio = audio;
+                audio.play().catch(function() {
+                    // Edge TTS 播放失败，用备用方案
+                    speakByBackup(text, lang);
+                });
+                audio.onended = function() { URL.revokeObjectURL(audioUrl); };
+                ws.close();
+            }
+        };
+
+        ws.onerror = function() {
+            // WebSocket 连接失败，用备用方案
+            speakByBackup(text, lang);
+        };
+
+        // 超时处理
+        setTimeout(function() {
+            if (ws.readyState !== WebSocket.CLOSED) {
+                ws.close();
+                if (audioChunks.length === 0) speakByBackup(text, lang);
+            }
+        }, 8000);
+
     } catch(e) {
-        speakByBaidu(text, lang);
+        speakByBackup(text, lang);
     }
 }
 
-// 百度翻译TTS备用
-function speakByBaidu(text, lang) {
+// 备用方案：Web Speech API
+function speakByBackup(text, lang) {
     try {
-        const tl = lang === 'en-US' ? 'en' : 'zh';
-        const url = 'https://fanyi.baidu.com/gettts?lan=' + tl + '&text=' + encodeURIComponent(text) + '&spd=5';
-        const audio = new Audio(url);
-        audio.volume = 1.0;
-        audio.play().catch(function() {});
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = lang;
+            u.rate = 0.8;
+            u.volume = 0.5;
+            if (lang === 'en-US') u.rate = 0.7;
+            window.speechSynthesis.speak(u);
+        }
     } catch(e) {}
+}
+
+// 生成随机ID
+function generateId() {
+    return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'.replace(/x/g, function() {
+        return Math.floor(Math.random() * 16).toString(16);
+    });
 }
 
 
